@@ -500,6 +500,16 @@
 		/obj/item/hand_labeler = 1,
 		/obj/item/stack/sheet/glass = 1)
 
+/obj/item/circuitboard/machine/inspector_booth
+	name = "Inspector Booth (Machine Board)"
+	icon_state = "generic"
+	build_path = /obj/machinery/inspector_booth
+	req_components = list(
+		/obj/item/stamp = 1,
+		/obj/item/stamp/denied = 1,
+		/obj/item/stack/sheet/glass = 1
+	)
+
 /obj/item/circuitboard/machine/protolathe
 	name = "Protolathe (Machine Board)"
 	icon_state = "generic"
