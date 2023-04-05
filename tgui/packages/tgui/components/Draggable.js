@@ -28,7 +28,7 @@ export class Draggable extends Component {
     }
   }
 
-  initDrag(e) {
+  handleInitDrag(e) {
     // Ignore if not left click
     if (e.button !== 0) return;
     const { initX, initY } = this.state;
@@ -68,7 +68,7 @@ export class Draggable extends Component {
     let pos = (this.ref && typeof this.ref.getBoundingClientRect() === "object") ? this.ref.getBoundingClientRect() : null;
     return (
       <Fragment>
-        <div style={style} onMouseDown={this.initDrag} ref={this.initRef}>
+        <div style={style} onMouseDown={this.handleInitDrag} ref={this.initRef}>
           DRAG ME!
         </div>
         {pos && <div style={debug}>

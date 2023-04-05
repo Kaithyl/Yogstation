@@ -7,10 +7,12 @@
 	//idle_power_usage = 50
 	circuit = /obj/item/circuitboard/machine/inspector_booth
 
+	var/traystyle = "tray.png"
+
 /obj/machinery/inspector_booth/Initialize()
 	. = ..()
 
-/obj/machinery/computer/inspector_booth/ui_interact(mob/user, datum/tgui/ui)
+/obj/machinery/inspector_booth/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
 		ui = new(user, src, "InspectorBooth", name)
@@ -18,8 +20,14 @@
 
 /obj/machinery/inspector_booth/ui_data(mob/living/carbon/human/user)
 	var/list/data = list()
+	data["tray"] = traystyle
 	return data
 
-/obj/machinery/computer/secure_data/ui_act(action, list/params)
+/obj/machinery/inspector_booth/ui_act(action, list/params)
 	if(..())
 		return
+
+/obj/machinery/inspector_booth/ui_assets(mob/user)
+	return list(
+		get_asset_datum(/datum/asset/simple/inspector_booth),
+	)

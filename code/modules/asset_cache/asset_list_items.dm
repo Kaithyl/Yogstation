@@ -55,6 +55,11 @@
 		"ntosradarpointerS.png" = 'icons/UI_Icons/tgui/ntosradar_pointer_S.png'
 	)
 
+/datum/asset/simple/inspector_booth
+	assets = list(
+		"tray.png" = 'icons/UI_Icons/tgui/inspector_booth/tray.png'
+	)
+
 /datum/asset/spritesheet/simple/pda
 	name = "pda"
 	assets = list(
