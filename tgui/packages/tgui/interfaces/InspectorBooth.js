@@ -1,28 +1,24 @@
 import { Component } from 'inferno';
 import { resolveAsset } from '../assets';
-import { useBackend } from '../backend';
+import { useBackend, useSharedState } from '../backend';
 import { Window } from '../layouts';
 
 class StampTray extends Component {
   constructor(props) {
     super(props);
-    this.state = {
-      active: false,
-    };
-    // const [deltaTime, setDeltaTime] = useSharedState("context", 'delta_time', Date().now());
-
     // Necessary in ES6
     this.handleToggle = this.handleToggle.bind(this);
   }
 
   handleToggle() {
-    this.setState(prevState => ({
-      active: !prevState.active,
-    }));
+    const [active, setActive] = useSharedState(this.context, "active", false);
+    const { act } = useBackend(this.context);
+    setActive(prev => !prev);
+    act(active ? 'tray_open' : 'tray_close');
   }
 
   render() {
-    const { active } = this.state;
+    const [active, setActive] = useSharedState(this.context, "active", false);
     const styles = {
       in : {
         transform: "translateX(0%)",
@@ -30,7 +26,7 @@ class StampTray extends Component {
       },
       out : {
         transform: "translateX(40%)",
-      transition: "transform 300ms ease-in-out 0s",
+        transition: "transform 300ms ease-in-out 0s",
       },
     };
     return (
@@ -38,7 +34,7 @@ class StampTray extends Component {
         <img src={resolveAsset('tray.png')}
               position="absolute"
               style={`-ms-interpolation-mode: nearest-neighbor;
-              width: 50%; margin-top:10%; margin-left: -45%`} />
+              width: 50%; margin-top:10%; margin-left: -45%;`} />
       </div>
     );
   }
