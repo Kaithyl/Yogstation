@@ -57,7 +57,12 @@
 
 /datum/asset/simple/inspector_booth
 	assets = list(
-		"tray.png" = 'icons/UI_Icons/tgui/inspector_booth/tray.png'
+		"desk.png" = 'icons/UI_Icons/tgui/inspector_booth/desk.png',
+		"tray_end.png" = 'icons/UI_Icons/tgui/inspector_booth/tray_end.png',
+		"tray_segment.png" = 'icons/UI_Icons/tgui/inspector_booth/tray_segment.png',
+		"tray_cover.png" = 'icons/UI_Icons/tgui/inspector_booth/tray_cover.png',
+		"stamp_approve.png" = 'icons/UI_Icons/tgui/inspector_booth/stamp_approve.png',
+		"stamp_deny.png" = 'icons/UI_Icons/tgui/inspector_booth/stamp_deny.png',
 	)
 
 /datum/asset/spritesheet/simple/pda
