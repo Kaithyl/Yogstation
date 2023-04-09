@@ -1,8 +1,9 @@
-import { Fragment, Component, createRef } from 'inferno';
+import { Fragment, Component } from 'inferno';
 
 export class Draggable extends Component {
   constructor(props) {
     super(props);
+    this.debug = props.debug;
     this.state = {
       initX: 0,
       initY: 0,
@@ -12,7 +13,7 @@ export class Draggable extends Component {
 
     // Necessary in ES6
     this.initRef = this.initRef.bind(this);
-    this.initDrag = this.initDrag.bind(this);
+    this.handleInitDrag = this.handleInitDrag.bind(this);
     this.startDrag = this.startDrag.bind(this);
     this.stopDrag = this.stopDrag.bind(this);
   }
@@ -58,23 +59,22 @@ export class Draggable extends Component {
     const { dX, dY } = this.state;
     const style = {
       transform: `translate(${dX}px, ${dY}px)`,
-      border: "1px solid rgba(0, 0, 0, 1)",
+      border: "2px solid rgba(255, 0, 0, 1)",
       width: "10%",
     };
     const debug = {
       transform: `translate(${dX}px, ${dY + 10}px)`,
     };
-    // let pos = null;
-    let pos = (this.ref && typeof this.ref.getBoundingClientRect() === "object") ? this.ref.getBoundingClientRect() : null;
+    let pos = null;
+    if (this.debug) {
+      pos = (this.ref && typeof this.ref.getBoundingClientRect() === "object") ? this.ref.getBoundingClientRect() : null;
+    }
     return (
       <Fragment>
-        <div style={style} onMouseDown={this.handleInitDrag} ref={this.initRef}>
-          DRAG ME!
-        </div>
-        {pos && <div style={debug}>
-          x: {pos.x},
-          y: {pos.y}
-                </div>}
+        <span style={style} onMouseDown={this.handleInitDrag} ref={this.initRef}>
+        { this.props.children }
+        </span>
+        {pos && <span style={debug}> x: {pos.x}, y: {pos.y} </span>}
       </Fragment>
     );
   }

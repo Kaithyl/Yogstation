@@ -3,6 +3,8 @@ import { resolveAsset } from '../assets';
 import { useBackend, useSharedState } from '../backend';
 import { Window } from '../layouts';
 
+import { Draggable } from '../components/Draggable';
+
 class Stamp extends Component {
   constructor(props) {
     super(props);
@@ -11,8 +13,20 @@ class Stamp extends Component {
     this.handleClick = this.handleClick.bind(this);
   }
 
+  // Fixes stuck buttons when client closes before timeout
+  componentDidMount() {
+    const [active, setActive] = useSharedState(this.context, this.icon+"_active", false);
+    const [timer] = useSharedState(this.context, this.icon+"_timer", false);
+    const { act } = useBackend(this.context);
+    if (active && new Date().getTime() - timer > 500) {
+      setActive(false);
+      act('stamp_up');
+    }
+  }
+
   handleClick() {
     const [active, setActive] = useSharedState(this.context, this.icon+"_active", false);
+    const [timer, setTimer] = useSharedState(this.context, this.icon+"_timer", new Date().getTime());
     if (active) { return; }
     const { act } = useBackend(this.context);
     setActive(true);
@@ -21,11 +35,10 @@ class Stamp extends Component {
       setActive(false);
       act('stamp_up');
     }, 500);
+    setTimer(new Date().getTime());
   }
 
   render() {
-    const { data } = useBackend(this.context);
-    const { tray_cover, stamp_approve } = data;
     const [active] = useSharedState(this.context, this.icon+"_active", false);
     const styles = {
       tray : {
@@ -48,7 +61,7 @@ class Stamp extends Component {
     };
     return (
       <span>
-        <img src={resolveAsset(tray_cover)}
+        <img src={resolveAsset("tray_cover.png")}
             style={{ ...styles.tray, ...styles.tray_cover }} />
         <img src={resolveAsset(this.icon)} onClick={this.handleClick}
             style={{ ...styles.tray, ...styles.stamp, ...active ? styles.down : styles.up }} />
@@ -72,8 +85,6 @@ class StampTray extends Component {
   }
 
   createSegs(num) {
-    const { data } = useBackend(this.context);
-    const { tray_seg } = data;
     const style = {
       position: "relative",
       "-ms-interpolation-mode": "nearest-neighbor",
@@ -82,14 +93,12 @@ class StampTray extends Component {
     };
     let segs = [];
     for (let i = 0; i < num; i++) {
-      segs.push(<img src={resolveAsset(tray_seg)} style={style} />);
+      segs.push(<img src={resolveAsset("tray_segment.png")} style={style} />);
     }
     return segs;
   }
 
   render() {
-    const { data } = useBackend(this.context);
-    const { tray_end, stamp_approve, stamp_deny } = data;
     const [active] = useSharedState(this.context, "tray_active", false);
     const styles = {
       slide : {
@@ -109,11 +118,11 @@ class StampTray extends Component {
     return (
       <div style={{ ...styles.slide, ...active ? styles.in : styles.out }}>
         { this.createSegs(1) }
-        <Stamp icon={stamp_deny} />
+        <Stamp icon={resolveAsset("stamp_deny.png")} />
         { this.createSegs(1) }
-        <Stamp icon={stamp_approve} />
+        <Stamp icon={resolveAsset("stamp_approve.png")} />
         { this.createSegs(1) }
-        <img src={resolveAsset(tray_end)}
+        <img src={resolveAsset("tray_end.png")}
           style={styles.tray_end} onClick={this.handleToggle} />
       </div>
     );
@@ -121,14 +130,14 @@ class StampTray extends Component {
 }
 
 export const InspectorBooth = (props, context) => {
-  const { act, data } = useBackend(context);
-  const { bg_desk } = data;
+  const { data } = useBackend(context);
   return (
-    <Window width={775} height={500}>
+    <Window width={775} height={500} >
       <div style={`-ms-interpolation-mode: nearest-neighbor;
-        background-image: url(${resolveAsset(bg_desk)}); background-repeat: space;
-        background-size: 10px 10px; height: 100vh;`}>
+        background-image: url(${resolveAsset("desk.png")}); background-repeat: space;
+        background-size: 10px 10px; height: 100vh; -ms-user-select: none; user-select: none;`}>
         <StampTray />
+        {data.items.toString()}
       </div>
     </Window>
   );

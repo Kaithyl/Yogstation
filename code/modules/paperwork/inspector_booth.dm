@@ -7,21 +7,37 @@
 	//idle_power_usage = 50
 	circuit = /obj/item/circuitboard/machine/inspector_booth
 
+	var/max_items = 10
+
 	var/sfx_speaker = 'sound/machines/inspector_booth/speech-announce.wav'
 	var/sfx_tray_open = 'sound/machines/inspector_booth/stampbar-open.wav'
 	var/sfx_tray_close = 'sound/machines/inspector_booth/stampbar-close.wav'
 	var/sfx_stamp_up = 'sound/machines/inspector_booth/stamp-up.wav'
 	var/sfx_stamp_down = 'sound/machines/inspector_booth/stamp-down.wav'
 
-	var/icon_bg_desk = "desk.png"
-	var/icon_tray_end = "tray_end.png"
-	var/icon_tray_seg = "tray_segment.png"
-	var/icon_tray_cover = "tray_cover.png"
-	var/icon_stamp_approve = "stamp_approve.png"
-	var/icon_stamp_deny = "stamp_deny.png"
-
 /obj/machinery/inspector_booth/Initialize()
 	. = ..()
+
+/obj/machinery/inspector_booth/attackby(obj/item/I, mob/user, params)
+	if (contents.len >= max_items)
+		to_chat(user, span_warning("\The [src] is full!"))
+		return
+	var/valid = FALSE
+	if (istype(I, /obj/item/paper))
+		valid = TRUE
+	if(valid)
+		// TODO: Add auto extinguishing/decontam for part upgrades
+		if (I.resistance_flags & ON_FIRE)
+			to_chat(user, span_warning("\The [src] rejects \the [I]."))
+		else
+			if(user.transferItemToLoc(I, src))
+				user.visible_message("[user] inserts \the [I] into \the [src].", \
+				span_notice("You insert \the [I] into \the [src]."))
+			else
+				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
+	else 
+		to_chat(user, span_warning("\The [src] rejects \the [I]."))
+
 
 /obj/machinery/inspector_booth/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
@@ -31,12 +47,10 @@
 
 /obj/machinery/inspector_booth/ui_data(mob/living/carbon/human/user)
 	var/list/data = list()
-	data["bg_desk"] = icon_bg_desk
-	data["tray_end"] = icon_tray_end
-	data["tray_seg"] = icon_tray_seg
-	data["tray_cover"] = icon_tray_cover
-	data["stamp_approve"] = icon_stamp_approve
-	data["stamp_deny"] = icon_stamp_deny
+	data["items"] = list()
+	for (var/obj/item/paper/P in src)
+		data["items"] += P.info
+			
 	return data
 
 /obj/machinery/inspector_booth/ui_act(action, list/params)
