@@ -49,8 +49,10 @@
 	var/list/data = list()
 	data["items"] = list()
 	for (var/obj/item/paper/P in src)
-		data["items"] += P.info
-			
+		var/text = P.info
+		for (var/i = 1; i <= P.written.len; ++i)
+			text += P.written[i].text;
+		data["items"] += text;
 	return data
 
 /obj/machinery/inspector_booth/ui_act(action, list/params)
