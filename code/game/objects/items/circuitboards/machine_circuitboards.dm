@@ -507,6 +507,7 @@
 	req_components = list(
 		/obj/item/stamp = 1,
 		/obj/item/stamp/denied = 1,
+		/obj/item/taperecorder = 1,
 		/obj/item/stack/sheet/glass = 1
 	)
 

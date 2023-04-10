@@ -4,3 +4,5 @@ stampbar-close
 stambar-open
 stamp-down
 stamp-up
+paper-dragstart1
+paper-dragstop1

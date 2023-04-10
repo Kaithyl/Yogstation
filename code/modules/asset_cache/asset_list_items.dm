@@ -63,6 +63,7 @@
 		"tray_cover.png" = 'icons/UI_Icons/tgui/inspector_booth/tray_cover.png',
 		"stamp_approve.png" = 'icons/UI_Icons/tgui/inspector_booth/stamp_approve.png',
 		"stamp_deny.png" = 'icons/UI_Icons/tgui/inspector_booth/stamp_deny.png',
+		"paper.png" = 'icons/UI_Icons/tgui/inspector_booth/paper.png',
 	)
 
 /datum/asset/spritesheet/simple/pda

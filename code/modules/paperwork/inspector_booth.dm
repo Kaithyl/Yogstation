@@ -1,19 +1,32 @@
 /obj/machinery/inspector_booth
 	name = "inspector booth"
-	desc = "Used to inspect paperwork."
+	desc = "Used for inspecting paperwork."
 	icon = 'icons/obj/machines/sleeper.dmi'
 	icon_state = "sleeper"
+	// TODO: add reduced power usage for part upgrades
 	//use_power = IDLE_POWER_USE
 	//idle_power_usage = 50
 	circuit = /obj/item/circuitboard/machine/inspector_booth
+	
+	// TODO: add increased health and armor for part upgrades
+	// armor = list(MELEE = 25, BULLET = 10, LASER = 10, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 50, ACID = 70)
+	// max_integrity = 200
 
-	var/max_items = 10
+	var/item_ids = 0
+	var/item_list = list()
 
-	var/sfx_speaker = 'sound/machines/inspector_booth/speech-announce.wav'
-	var/sfx_tray_open = 'sound/machines/inspector_booth/stampbar-open.wav'
-	var/sfx_tray_close = 'sound/machines/inspector_booth/stampbar-close.wav'
-	var/sfx_stamp_up = 'sound/machines/inspector_booth/stamp-up.wav'
-	var/sfx_stamp_down = 'sound/machines/inspector_booth/stamp-down.wav'
+	// TODO: add increased item capacity for part upgrades
+	var/max_items = 5
+
+	var/sfx = list(
+		"speaker" = 'sound/machines/inspector_booth/speech-announce.wav',
+		"tray_open" = 'sound/machines/inspector_booth/stampbar-open.wav',
+		"tray_close" = 'sound/machines/inspector_booth/stampbar-close.wav',
+		"stamp_up" = 'sound/machines/inspector_booth/stamp-up.wav',
+		"stamp_down" = 'sound/machines/inspector_booth/stamp-down.wav',
+		"drag_start" = 'sound/machines/inspector_booth/paper-dragstart1.wav',
+		"drag_stop" = 'sound/machines/inspector_booth/paper-dragstop1.wav',
+	)
 
 /obj/machinery/inspector_booth/Initialize()
 	. = ..()
@@ -33,6 +46,7 @@
 			if(user.transferItemToLoc(I, src))
 				user.visible_message("[user] inserts \the [I] into \the [src].", \
 				span_notice("You insert \the [I] into \the [src]."))
+				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 0, "y" = 0)
 			else
 				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
 	else 
@@ -47,32 +61,46 @@
 
 /obj/machinery/inspector_booth/ui_data(mob/living/carbon/human/user)
 	var/list/data = list()
-	data["items"] = list()
-	for (var/obj/item/paper/P in src)
-		var/text = P.info
-		for (var/i = 1; i <= P.written.len; ++i)
-			text += P.written[i].text;
-		data["items"] += text;
+		
+	var/list/items = list()
+	for (var/key in item_list)
+		var/I = item_list[key]["item"]
+		if (istype(I, /obj/item/paper))
+			var/obj/item/paper/P = I
+			var/text = P.info
+			for (var/i = 1; i <= P.written.len; ++i)
+				if(istype(P.written[i] ,/datum/langtext))
+					var/datum/langtext/L = P.written[i]
+					text += "\n" + L.text
+			// Byond combines lists when adding by default but we want a list of lists
+			items += list(list("id" = key, "text" = text, "x" = item_list[key]["x"], "y" = item_list[key]["y"]))
+	data["items"] = items
+			
 	return data
 
 /obj/machinery/inspector_booth/ui_act(action, list/params)
 	if(..())
 		return
 	switch(action)
-		if("speaker")
-			playsound(src, sfx_speaker, 50, 1, 7)
+		if("play_sfx")
+			var/name = params["name"]
+			if (name in sfx)
+				var/loc = src
+				if (params["ckey"])
+					loc = get_mob_by_key(params["ckey"])
+				var/volume = params["volume"] ? params["volume"] : 50
+				var/vary = params["vary"] ? params["vary"] : 1
+				var/extra_range = params["extrarange"] ? params["extrarange"] : -3
+				playsound(loc, sfx[name], volume, vary, extra_range)
+				. = TRUE
+		if("move_item")
+			if (params["id"] in item_list)
+				var/id = params["id"]
+				item_list[id]["x"] = params["x"]
+				item_list[id]["y"] = params["y"]
 			. = TRUE
-		if("tray_open")
-			playsound(src, sfx_tray_open, 50, 1, -3)
-			. = TRUE
-		if("tray_close")
-			playsound(src, sfx_tray_close, 50, 1, -3)
-			. = TRUE
-		if("stamp_up")
-			playsound(src, sfx_stamp_up, 50, 1, -3)
-			. = TRUE
-		if("stamp_down")
-			playsound(src, sfx_stamp_down, 50, 1, -3)
+		if("take_item")
+			// var/id = params["id"]
 			. = TRUE
 
 /obj/machinery/inspector_booth/ui_assets(mob/user)
