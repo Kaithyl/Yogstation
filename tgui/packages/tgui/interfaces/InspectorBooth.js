@@ -4,9 +4,6 @@
  * @license MIT
  */
 
-// I would have moved all the inline CSS into a style sheet
-// but tgui-dev doesn't hot reload .scss files
-
 import { Component } from 'inferno';
 import { resolveAsset } from '../assets';
 import { useBackend, useSharedState } from '../backend';
@@ -54,7 +51,6 @@ class Stamp extends Component {
     const styles = {
       tray : {
         position: "relative",
-        "-ms-interpolation-mode": "nearest-neighbor",
         "margin-left": "-1.23vw",
       },
       tray_cover : {
@@ -112,7 +108,6 @@ class StampTray extends Component {
   createSegs(num) {
     const style = {
       position: "relative",
-      "-ms-interpolation-mode": "nearest-neighbor",
       width: "6vw",
       "z-index": -1,
     };
@@ -122,7 +117,7 @@ class StampTray extends Component {
     }
     return segs;
   }
-f
+
   render() {
     const { data } = useBackend(this.context);
     const { stamps=[] } = data;
@@ -130,25 +125,20 @@ f
     const [zIndex] = useSharedState(this.context, "zindex", 0);
     const styles = {
       slide : {
-        position: "absolute",
-        "top": "10vh",
         "z-index": zIndex+100,
-        // "margin-bottom": "0.5vh",
         transition: this.init ? "transform 300ms ease-in-out 0s" : "none",
-        "pointer-events": "none",
-        "box-shadow": "0vw 7vh 0 0 rgba(0, 0, 0, .2)",
       },
       out : { transform: "translateX(0vw)" },
       in : { transform: `translateX(${this.slide_width}vw)` },
       tray_end : {
         width: `${this.end_width}vw`,
         position: "relative",
-        "-ms-interpolation-mode": "nearest-neighbor",
         "pointer-events": "auto",
       },
     };
+    const className = `InspectorBooth__Tray`;
     return (
-      <div ref={this.initRef} style={{ ...styles.slide, ...active ? styles.out : styles.in }}>
+      <div ref={this.initRef} className={className} style={{ ...styles.slide, ...active ? styles.out : styles.in }}>
         {stamps.map(stamp => (
           <span key={stamp.type}>
             { this.createSegs(1) }
@@ -166,7 +156,7 @@ class Paperwork extends Component {
   constructor(props) {
     super(props);
     this.debug = this.props.debug;
-    this.id = props.id;
+    this.item_id = props.item_id;
     this.text = props.text ?? " ";
     this.stamps = props.stamps ?? " ";
     this.x = props.x;
@@ -202,62 +192,26 @@ class Paperwork extends Component {
   onStopDrag(e) {
     const { dX, dY } = e.state;
     const { act, config } = useBackend(this.context);
-    act('move_item', { id: this.id, x: dX, y: dY, z: e.z });
+    act('move_item', { id: this.item_id, x: dX, y: dY, z: e.z });
     act('play_sfx', { name: 'drag_stop', ckey: config.client?.ckey });
   }
 
   render() {
-    const styles = {
-      // what are style sheets
-      text: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        padding: "10%",
-        "text-align": "left",
-        color: "black",
-        "font-size": "2vmin",
-        "line-height": "2vmin",
-        "overflow-wrap": "break-word",
-        "word-wrap": "break-word",
-        "word-break": "break-word",
-      },
-      stamps: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        border: "2px solid rgba(255, 0, 0, 1)",
-      },
-      // Have to use an img because nearest-neighbor/pixelated doesn't affect background-image
-      box: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        "-ms-interpolation-mode": "nearest-neighbor",
-        "width": "30vw",
-        "height": "60vh",
-        "order-left-width": "20px",
-        "box-sizing": "border-box",
-        "border-left": "dashed 1px rgba(0, 0, 0, .2)",
-        "border-bottom": "dashed 1px rgba(0, 0, 0, .2)",
-      },
-      drag: {
-        "box-shadow": "-1vw 3vh 0 0 rgba(0, 0, 0, .2)",
-      },
-    };
-    let html = `<style> ul li { margin-left: -5vw; } </style>`+this.sanitizeHTML(this.text);
+    const onDrag = { "box-shadow": "-1vw 3vh 0 0 rgba(0, 0, 0, .2)" };
+    const className = 'InspectorBooth__Items';
+    let process = this.stamps;
+    process = process.replace(/<span/g, "<div><span").replace(/<\/span>/g, "</span></div>");
     return (
-      <Draggable debug={this.debug} drag={styles.drag} onDrag={this.handleOnDrag}
-        stopDrag={this.onStopDrag} x={this.x} y={this.y} z={this.z}>
-        <div style={styles.box}>
-          <img src={resolveAsset("paper.png")} style={styles.box} />
-          {this.debug && (<div style={styles.text}> {html+this.stamps} </div>)}
-          {!this.debug && (<div style={styles.text}
+      <Draggable className={className} debug={this.debug} drag={onDrag} onDrag={this.handleOnDrag} stopDrag={this.onStopDrag} x={this.x} y={this.y} z={this.z}>
+        <div className={className+'__paper'} >
+          <img src={resolveAsset("paper.png")} className={className+'__paper-icon'} />
+          {this.debug && (<div className={className+'__paper-textBox'}> {this.sanitizeHTML(this.text)+process} </div>)}
+          {!this.debug && (<div className={className+'__paper-textBox'}
           // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: html }} />)}
-          {!this.debug && (<div style={styles.stamps}
+          dangerouslySetInnerHTML={{ __html: this.sanitizeHTML(this.text) }} />)}
+          {!this.debug && (<div className={className+'__paper-stamps'}
           // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: this.stamps }} />)}
+          dangerouslySetInnerHTML={{ __html: process }} />)}
         </div>
       </Draggable>
     );
@@ -269,12 +223,9 @@ export const InspectorBooth = (props, context) => {
   const { debug, items=[] } = data;
   return (
     <Window width={775} height={500} >
-      <div class={InspectorBooth} style={`-ms-interpolation-mode: nearest-neighbor;
-      background-repeat: space; background-size: 10px 10px;
-      background-image: url(${resolveAsset("desk.png")});
-      height: 100vh;-ms-user-select: none; user-select: none;`}>
+      <div className={'InspectorBooth'} style={`background-image: url(${resolveAsset("desk.png")});`}>
         {items.map(item => (
-          <Paperwork debug={debug} key={item.id} id={item.id} text={item.text} stamps={item.stamps} x={item.x} y={item.y} z={item.z} />
+          <Paperwork debug={debug===1} key={item.id} item_id={item.id} text={item.text} stamps={item.stamps} x={item.x} y={item.y} z={item.z} />
         ))}
         <StampTray />
       </div>
