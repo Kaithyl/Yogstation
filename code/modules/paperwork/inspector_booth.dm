@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2023 Kaithyl (https://github.com/kaithyl)
+ * SPDX-License-Identifier: MIT
+ */
+
 /obj/machinery/inspector_booth
 	name = "inspector booth"
 	desc = "Used for inspecting paperwork."
@@ -12,11 +17,18 @@
 	// armor = list(MELEE = 25, BULLET = 10, LASER = 10, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 50, ACID = 70)
 	// max_integrity = 200
 
+	var/debug = FALSE
 	var/item_ids = 0
 	var/item_list = list()
 
 	// TODO: add increased item capacity for part upgrades
 	var/max_items = 5
+
+	var/stamp_types = list(
+		"stamp-ok" = "stamp_approve.png",
+		"stamp-deny" = "stamp_deny.png",
+		"stamp-clown" = "stamp_clown.png",
+	)
 
 	var/sfx = list(
 		"speaker" = 'sound/machines/inspector_booth/speech-announce.wav',
@@ -41,12 +53,12 @@
 	if(valid)
 		// TODO: Add auto extinguishing/decontam for part upgrades
 		if (I.resistance_flags & ON_FIRE)
-			to_chat(user, span_warning("\The [src] rejects \the [I]."))
+			to_chat(user, span_warning("\The [src] rejects the burning [I]."))
 		else
 			if(user.transferItemToLoc(I, src))
 				user.visible_message("[user] inserts \the [I] into \the [src].", \
 				span_notice("You insert \the [I] into \the [src]."))
-				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 0, "y" = 0)
+				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 0, "y" = 0, "z" = 0)
 			else
 				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
 	else 
@@ -62,6 +74,8 @@
 /obj/machinery/inspector_booth/ui_data(mob/living/carbon/human/user)
 	var/list/data = list()
 		
+	data["debug"] = debug
+
 	var/list/items = list()
 	for (var/key in item_list)
 		var/I = item_list[key]["item"]
@@ -73,8 +87,17 @@
 					var/datum/langtext/L = P.written[i]
 					text += "\n" + L.text
 			// Byond combines lists when adding by default but we want a list of lists
-			items += list(list("id" = key, "text" = text, "x" = item_list[key]["x"], "y" = item_list[key]["y"]))
+			items += list(list("id" = key, "text" = text, "stamps" = P.stamps, "x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
 	data["items"] = items
+
+	var/list/stamps = list()
+	for (var/obj/item/stamp/S in component_parts)
+		var/name = S.icon_state
+		if (name in stamp_types)
+			stamps += list(list("type" = name, "icon" = stamp_types[name]))
+		else
+			stamps += list(list("type" = name, "icon" = "stamp_unknown.png"))
+	data["stamps"] = stamps
 			
 	return data
 
@@ -93,11 +116,23 @@
 				var/extra_range = params["extrarange"] ? params["extrarange"] : -3
 				playsound(loc, sfx[name], volume, vary, extra_range)
 				. = TRUE
+		if("stamp_item")
+			var/type = params["type"] ? params["type"] : "stamp-mime"
+			if (params["id"] in item_list)
+				if (istype(item_list[params["id"]]["item"], /obj/item/paper))
+					var/obj/item/paper/P = item_list[params["id"]]["item"]
+					// This could be moved into a proc in Paper.dm
+					var/datum/asset/spritesheet/sheet = get_asset_datum(/datum/asset/spritesheet/simple/paper)
+					if (isnull(P.stamps))
+						P.stamps = sheet.css_tag()
+					P.stamps += sheet.icon_tag(type)
+					. = TRUE
 		if("move_item")
 			if (params["id"] in item_list)
 				var/id = params["id"]
 				item_list[id]["x"] = params["x"]
 				item_list[id]["y"] = params["y"]
+				item_list[id]["z"] = params["z"]
 			. = TRUE
 		if("take_item")
 			// var/id = params["id"]

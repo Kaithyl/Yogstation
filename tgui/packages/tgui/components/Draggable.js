@@ -1,19 +1,28 @@
+/**
+ * @file
+ * @copyright 2023 Kaithyl (https://github.com/kaithyl)
+ * @license MIT
+ */
+
 import { Fragment, Component } from 'inferno';
 import { useBackend } from '../backend';
+import { UI_INTERACTIVE } from '../constants';
 
 export class Draggable extends Component {
   constructor(props) {
     super(props);
     this.state = {
       dragging: false,
-      initX: 0, initY: 0,
+      initX: 0,
+      initY: 0,
       dX: this.props.x ?? 0,
       dY: this.props.y ?? 0,
-      pX: 0, pY: 0,
+      pX: 0,
+      pY: 0,
     };
     this.debug = this.props.debug;
-    this.drag = this.props.drag === undefined ? {} : this.props.drag;
-    this.z = this.props.z === undefined? 0 : this.props.z;
+    this.drag = this.props.drag ?? {};
+    this.z = this.props.z ?? 0;
 
     // Necessary in ES6
     this.initRef = this.initRef.bind(this);
@@ -34,6 +43,9 @@ export class Draggable extends Component {
   }
 
   handleInitDrag(e) {
+    const { config } = useBackend(this.context);
+    // Ignore if user is not allowed to interact
+    if (config.status < UI_INTERACTIVE) return;
     // Ignore if not left click
     if (e.button !== 0) return;
     // const { initX, initY } = this.state;
