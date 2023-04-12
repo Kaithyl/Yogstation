@@ -87,7 +87,11 @@
 					var/datum/langtext/L = P.written[i]
 					text += "\n" + L.text
 			// Byond combines lists when adding by default but we want a list of lists
-			items += list(list("id" = key, "text" = text, "stamps" = P.stamps, "x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
+			items["papers"] += list(list("id" = key, "text" = text, "stamps" = P.stamps, "x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
+		if (istype(I, /obj/item/card/id))
+			var/obj/item/card/id/D = I
+			
+	
 	data["items"] = items
 
 	var/list/stamps = list()
@@ -104,23 +108,24 @@
 /obj/machinery/inspector_booth/ui_act(action, list/params)
 	if(..())
 		return
+	
+	var/mob/living/user = params["ckey"] ? get_mob_by_key(params["ckey"]) : null
+	var/obj/item = (params["id"] && params["id"] in item_list) ? item_list[params["id"]]["item"] : null
+
 	switch(action)
 		if("play_sfx")
 			var/name = params["name"]
 			if (name in sfx)
-				var/loc = src
-				if (params["ckey"])
-					loc = get_mob_by_key(params["ckey"])
 				var/volume = params["volume"] ? params["volume"] : 50
 				var/vary = params["vary"] ? params["vary"] : 1
 				var/extra_range = params["extrarange"] ? params["extrarange"] : -3
-				playsound(loc, sfx[name], volume, vary, extra_range)
+				playsound(user ? user : src, sfx[name], volume, vary, extra_range)
 				. = TRUE
 		if("stamp_item")
 			var/type = params["type"] ? params["type"] : "stamp-mime"
-			if (params["id"] in item_list)
-				if (istype(item_list[params["id"]]["item"], /obj/item/paper))
-					var/obj/item/paper/P = item_list[params["id"]]["item"]
+			if (item != null)
+				if (istype(item, /obj/item/paper))
+					var/obj/item/paper/P = item
 					// This could be moved into a proc in Paper.dm
 					var/datum/asset/spritesheet/sheet = get_asset_datum(/datum/asset/spritesheet/simple/paper)
 					if (isnull(P.stamps))
@@ -135,8 +140,15 @@
 				item_list[id]["z"] = params["z"]
 				. = TRUE
 		if("take_item")
-			// var/id = params["id"]
-			. = TRUE
+			if (user && item && !QDELETED(item))
+				user.put_in_hands(item)
+				item_list -= params["id"]
+				. = TRUE
+		if("drop_item")
+			if (item && !QDELETED(item))
+				item.forceMove(drop_location())
+				item_list -= params["id"]
+				. = TRUE
 
 /obj/machinery/inspector_booth/ui_assets(mob/user)
 	return list(

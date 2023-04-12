@@ -21,13 +21,14 @@ export class Draggable extends Component {
       pY: 0,
     };
     this.debug = this.props.debug;
+    this.className = this.props.className;
     this.drag = this.props.drag ?? {};
     this.z = this.props.z ?? 0;
 
     // Necessary in ES6
     this.initRef = this.initRef.bind(this);
-    this.handleInitDrag = this.handleInitDrag.bind(this);
     this.startDrag = this.startDrag.bind(this);
+    this.duringDrag = this.duringDrag.bind(this);
     this.stopDrag = this.stopDrag.bind(this);
   }
 
@@ -42,7 +43,7 @@ export class Draggable extends Component {
     }
   }
 
-  handleInitDrag(e) {
+  startDrag(e) {
     const { config } = useBackend(this.context);
     // Ignore if user is not allowed to interact
     if (config.status < UI_INTERACTIVE) return;
@@ -56,12 +57,12 @@ export class Draggable extends Component {
       dY: 100*(e.clientY - initY - this.ref.clientHeight/2)/window.innerHeight,*/
       dragging: true,
     });
-    window.addEventListener("mousemove", this.startDrag, false);
+    window.addEventListener("mousemove", this.duringDrag, false);
     window.addEventListener("mouseup", this.stopDrag, false);
-    this.props.onDrag(this);
+    if(this.props.startDrag) { this.props.startDrag(this); }
   }
 
-  startDrag(e) {
+  duringDrag(e) {
     const { config } = useBackend(this.context);
     // Ignore if user is not allowed to interact
     if (config.status < UI_INTERACTIVE) return;
@@ -77,6 +78,7 @@ export class Draggable extends Component {
       dX: clamp(initX + 100*(e.clientX - prev.pX)/window.innerWidth, 0, maxX),
       dY: clamp(initY + 100*(e.clientY - prev.pY)/window.innerHeight, 0, maxY),
     }));
+    if(this.props.duringDrag) { this.props.duringDrag(this); }
   }
 
   // remove event listeners when the component is not being dragged
@@ -91,9 +93,9 @@ export class Draggable extends Component {
       initY: 100*top/window.innerHeight,
       dragging: false,
     });
-    window.removeEventListener("mousemove", this.startDrag, false);
+    window.removeEventListener("mousemove", this.duringDrag, false);
     window.removeEventListener("mouseup", this.stopDrag, false);
-    this.props.stopDrag(this);
+    if(this.props.stopDrag) { this.props.stopDrag(this); }
   }
 
   render() {
@@ -115,7 +117,9 @@ export class Draggable extends Component {
     }
     return (
       <Fragment>
-        <div style={{ ...style, ...dragging? this.drag : {} }} onMouseDown={this.handleInitDrag} ref={this.initRef}>
+        <div style={{ ...style, ...dragging? this.drag : {} }}
+        // eslint-disable-next-line react/jsx-handler-names
+          onMouseDown={this.startDrag} ref={this.initRef}>
         { this.props.children }
         </div>
         {pos && <div style={debug}> x: {pos.left}, y: {pos.top}, z: {this.z} </div>}

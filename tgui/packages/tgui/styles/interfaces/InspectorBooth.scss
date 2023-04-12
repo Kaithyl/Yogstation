@@ -10,7 +10,6 @@ $stamp-height: 8vh;
 
 .InspectorBooth {
   background-repeat: space;
-  background-size: 10px 10px;
   height: 100vh;
   -ms-user-select: none;
   user-select: none;
@@ -25,6 +24,34 @@ $stamp-height: 8vh;
   top: 10vh;
   pointer-events: none;
   box-shadow: 0vw 7vh 0 0 rgba(0, 0, 0, .2);
+
+  &__stamp {
+    z-index: -1;
+    pointer-events: auto;
+  }
+
+  &__segment {
+    position: relative;
+    z-index: -1;
+    pointer-events: auto;
+  }
+}
+
+.InspectorBooth__Receptacle {
+  position: absolute;
+  font-size: 2.5vmin;
+
+  &--take_item {
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+  }
+
+  &--drop_item {
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+  }
 }
 
 .InspectorBooth__Items {
@@ -69,13 +96,11 @@ $stamp-height: 8vh;
     }
 
     &-stamps > div {
-      width: $stamp-width;
-      height: $stamp-height;
       display: inline-block;
 
       & > span {
-        width: 100%;
-        height: 100%;
+        width: $stamp-width;
+        height: $stamp-height;
         background-size: cover;
       }
     }
@@ -86,7 +111,13 @@ $stamp-height: 8vh;
 // that is used by a span as a background which is offset by set x
 // and y pixels which means it can't scale with screen size properly unless
 // you overide every single style manually like this
-.paper121x54{
+.InspectorBooth__paper121x121{
+  height: 2*$stamp-height !important;
+  background-size: 100% 100% !important;
+  background-position: center !important;
+}
+.InspectorBooth__paper120x54{ background-size: 100% 100% !important; }
+.InspectorBooth__paper121x54{
   background-size: 3*$stamp-width 5*$stamp-height !important;
   background-position: 0 0 !important;
   // If any new stamps are added this will probably break
