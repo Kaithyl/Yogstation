@@ -82,9 +82,8 @@ $stamp-height: 8vh;
   }
 }
 
-// In memory of the countless hours lost finally getting this to work because
-// for some reason the stamp assets are treated as a single sprite sheet
-// that is used by a span as a background that is offset by set x
+// For some reason the stamp assets are treated as a single sprite sheet
+// that is used by a span as a background which is offset by set x
 // and y pixels which means it can't scale with screen size properly unless
 // you overide every single style manually like this
 .paper121x54{

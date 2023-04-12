@@ -62,6 +62,9 @@ export class Draggable extends Component {
   }
 
   startDrag(e) {
+    const { config } = useBackend(this.context);
+    // Ignore if user is not allowed to interact
+    if (config.status < UI_INTERACTIVE) return;
     const { initX, initY } = this.state;
     let maxX, maxY = 0;
     if (this.ref) {

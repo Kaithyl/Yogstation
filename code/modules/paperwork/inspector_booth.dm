@@ -133,7 +133,7 @@
 				item_list[id]["x"] = params["x"]
 				item_list[id]["y"] = params["y"]
 				item_list[id]["z"] = params["z"]
-			. = TRUE
+				. = TRUE
 		if("take_item")
 			// var/id = params["id"]
 			. = TRUE

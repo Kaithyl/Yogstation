@@ -6,7 +6,7 @@
 
 import { Component } from 'inferno';
 import { resolveAsset } from '../assets';
-import { useBackend, useSharedState } from '../backend';
+import { useBackend, useSharedState, useLocalState } from '../backend';
 import { Window } from '../layouts';
 
 import { Draggable } from '../components/Draggable';
@@ -32,6 +32,30 @@ class Stamp extends Component {
     }
   }
 
+  overlap(first, second) {
+    const stamp = first?.getBoundingClientRect();
+    const paper = second?.getBoundingClientRect();
+    if (stamp === undefined || paper === undefined) { return false; }
+    return !(stamp.left < paper.left || stamp.right > paper.right || paper.top > stamp.bottom || paper.bottom < stamp.top);
+  }
+
+  stamp() {
+    const { act } = useBackend(this.context);
+    if (!this.ref) { return; }
+    const papers = document.getElementsByClassName('InspectorBooth__Items__paper');
+    if (papers.length <= 0) { return; }
+    let paper = null;
+    let z = -Infinity;
+    for (let i = 0; i < papers.length; i++) {
+      if (this.overlap(this.ref, papers[i]) && papers[i].dataset.z >= z) {
+        paper = papers[i];
+        z = papers[i].dataset.z;
+      }
+    }
+    if (paper === null) { return; }
+    act('stamp_item', { id: paper.dataset.id, type: this.type });
+  }
+
   handleClick() {
     const [active, setActive] = useSharedState(this.context, this.type+"_active", false);
     const [, setTimer] = useSharedState(this.context, this.type+"_timer", new Date().getTime());
@@ -40,6 +64,7 @@ class Stamp extends Component {
     setActive(true);
     act('play_sfx', { name: 'stamp_down', ckey: config.client?.ckey });
     setTimeout(() => {
+      this.stamp();
       setActive(false);
       act('play_sfx', { name: 'stamp_up', ckey: config.client?.ckey });
     }, 500);
@@ -71,8 +96,9 @@ class Stamp extends Component {
       <span>
         <img src={resolveAsset("tray_cover.png")}
             style={{ ...styles.tray, ...styles.tray_cover }} />
-        <img src={resolveAsset(this.icon)} onClick={this.handleClick}
+        <img src={resolveAsset(this.icon)} onClick={this.handleClick} ref={ref => (this.ref = ref)}
             style={{ ...styles.tray, ...styles.stamp, ...active ? styles.down : styles.up }} />
+        {this.debuglog && (<div style={`position: absolute; left: 0; top: 0;`}> {this.debuglog} </div>)}
       </span>
     );
   }
@@ -89,7 +115,6 @@ class StampTray extends Component {
     this.handleToggle = this.handleToggle.bind(this);
   }
 
-  // i hate frontend
   initRef(ref) {
     this.ref = ref;
     if (this.ref) {
@@ -110,6 +135,7 @@ class StampTray extends Component {
       position: "relative",
       width: "6vw",
       "z-index": -1,
+      "pointer-events": "auto",
     };
     let segs = [];
     for (let i = 0; i < num; i++) {
@@ -155,7 +181,7 @@ class StampTray extends Component {
 class Paperwork extends Component {
   constructor(props) {
     super(props);
-    this.debug = this.props.debug;
+    this.debug = props.debug;
     this.item_id = props.item_id;
     this.text = props.text ?? " ";
     this.stamps = props.stamps ?? " ";
@@ -202,8 +228,9 @@ class Paperwork extends Component {
     let process = this.stamps;
     process = process.replace(/<span/g, "<div><span").replace(/<\/span>/g, "</span></div>");
     return (
-      <Draggable className={className} debug={this.debug} drag={onDrag} onDrag={this.handleOnDrag} stopDrag={this.onStopDrag} x={this.x} y={this.y} z={this.z}>
-        <div className={className+'__paper'} >
+      <Draggable className={className} x={this.x} y={this.y} z={this.z}
+        drag={onDrag} onDrag={this.handleOnDrag} stopDrag={this.onStopDrag} debug={this.debug} >
+        <div data-id={this.item_id} data-z={this.z} className={className+'__paper'} >
           <img src={resolveAsset("paper.png")} className={className+'__paper-icon'} />
           {this.debug && (<div className={className+'__paper-textBox'}> {this.sanitizeHTML(this.text)+process} </div>)}
           {!this.debug && (<div className={className+'__paper-textBox'}
@@ -225,7 +252,8 @@ export const InspectorBooth = (props, context) => {
     <Window width={775} height={500} >
       <div className={'InspectorBooth'} style={`background-image: url(${resolveAsset("desk.png")});`}>
         {items.map(item => (
-          <Paperwork debug={debug===1} key={item.id} item_id={item.id} text={item.text} stamps={item.stamps} x={item.x} y={item.y} z={item.z} />
+          <Paperwork debug={debug===1} item_id={item.id} text={item.text} stamps={item.stamps}
+            x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps+debug} />
         ))}
         <StampTray />
       </div>
