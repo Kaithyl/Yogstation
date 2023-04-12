@@ -4,9 +4,16 @@
  * @license MIT
  */
 
+@use 'sass:math';
+
 // For accessing the stamp sprite sheet
-$stamp-width: 12vw;
-$stamp-height: 8vh;
+$stamp-width: 12vw !default;
+$stamp-height: 8vh !default;
+
+@mixin clear-margins {
+  margin: 0;
+  padding: 0;
+}
 
 .InspectorBooth {
   background-repeat: space;
@@ -52,6 +59,13 @@ $stamp-height: 8vh;
     top: 0;
     transform: translateX(-50%);
   }
+
+  &--shrink {
+    right: 0;
+    width: 30vw;
+    height: 100%;
+    border: 2px dashed green;
+  }
 }
 
 .InspectorBooth__Items {
@@ -65,6 +79,39 @@ $stamp-height: 8vh;
     justify-content: flex-start;
     overflow: hidden;
 
+    &--small {
+      @extend .InspectorBooth__Items__paper;
+      width: 10vw;
+      height: 20vh;
+      & * {
+        transform: scale(0.8);
+      }
+
+      .InspectorBooth__Items__paper-textBox {
+        font-size: 1vmin;
+        line-height: 1vmin;
+        margin: -1vmin -2vmin -2vmin -1vmin;
+
+        & > hr {
+          margin: -1vmin 0 -1vmin 0;
+        }
+
+        > input {
+          width: 0.1vmin;
+          height: 0.1vmin;
+        }
+      }
+
+      .InspectorBooth__Items__paper-stamps {
+        margin: 0 -12vmin 0 -12vmin;
+        transform: scale(0.4) !important;
+
+        & > span {
+          margin: -4vmin -2vmin 0 -2vmin;
+        }
+      }
+    }
+
     &-icon {
       position: absolute;
       top: 0;
@@ -73,6 +120,7 @@ $stamp-height: 8vh;
       height: 100%;
       border-left: dashed 2px rgba(0, 0, 0, .2);
       border-bottom: dashed 2px rgba(0, 0, 0, .2);
+      transform: none;
     }
 
     &-textBox {
@@ -82,27 +130,37 @@ $stamp-height: 8vh;
       text-align: left;
       color: black;
       font-size: 2vmin;
-      line-height: 2vmin;
+      line-height: 2.05vmin;
+    }
+
+    &-textBox > hr {
+      @include clear-margins;
     }
 
     &-textBox > ul {
-      margin: 0;
-      padding: 0;
+      @include clear-margins;
+    }
+
+    &-textBox > input {
+      width: 1vw;
+      height: 1vh;
+
+      &--small {
+        width: 0.1vw;
+        height: 0.1vh;
+      }
     }
 
     &-stamps {
       position: relative;
       text-align: center;
+      display: inline-block;
     }
 
-    &-stamps > div {
-      display: inline-block;
-
-      & > span {
-        width: $stamp-width;
-        height: $stamp-height;
-        background-size: cover;
-      }
+    &-stamps > span {
+      width: $stamp-width;
+      height: $stamp-height;
+      background-size: cover;
     }
   }
 }
@@ -111,13 +169,13 @@ $stamp-height: 8vh;
 // that is used by a span as a background which is offset by set x
 // and y pixels which means it can't scale with screen size properly unless
 // you overide every single style manually like this
-.InspectorBooth__paper121x121{
+.InspectorBooth__paper121x121 {
   height: 2*$stamp-height !important;
   background-size: 100% 100% !important;
   background-position: center !important;
 }
-.InspectorBooth__paper120x54{ background-size: 100% 100% !important; }
-.InspectorBooth__paper121x54{
+.InspectorBooth__paper120x54 { background-size: 100% 100% !important; }
+.InspectorBooth__paper121x54 {
   background-size: 3*$stamp-width 5*$stamp-height !important;
   background-position: 0 0 !important;
   // If any new stamps are added this will probably break

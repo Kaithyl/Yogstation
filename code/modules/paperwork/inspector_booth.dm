@@ -48,7 +48,7 @@
 		to_chat(user, span_warning("\The [src] is full!"))
 		return
 	var/valid = FALSE
-	if (istype(I, /obj/item/paper))
+	if (istype(I, /obj/item/paper) || istype(I, /obj/item/card/id))
 		valid = TRUE
 	if(valid)
 		// TODO: Add auto extinguishing/decontam for part upgrades
@@ -90,7 +90,7 @@
 			items["papers"] += list(list("id" = key, "text" = text, "stamps" = P.stamps, "x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
 		if (istype(I, /obj/item/card/id))
 			var/obj/item/card/id/D = I
-			
+			items["idcards"] += list(list("id" = key, "name" = D.registered_name, "age" = D.registered_age, "job" = D.assignment, "original_job" = D.originalassignment))
 	
 	data["items"] = items
 

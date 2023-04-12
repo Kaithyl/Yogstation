@@ -14,13 +14,15 @@ import DOMPurify from 'dompurify';
 
 // DO NOT REMOVE THIS IS IMPORTANT FOR PREVENTING INJECTION ATTACKS
 const sanitizeHTML = (input) => {
-  return DOMPurify.sanitize(input, {
+  input = DOMPurify.sanitize(input, {
     FORBID_ATTR: ['class', 'style'],
     ALLOWED_TAGS: [
       'br', 'code', 'li', 'p', 'pre', 'span', 'table', 'td', 'tr',
       'th', 'ul', 'ol', 'menu', 'b', 'center', 'table', 'tr', 'th', 'hr',
     ],
   });
+  input = input.replace(/\[%f\]/g, `<input type="checkbox" disabled="disabled" />`);
+  return input;
 };
 
 const overlap = (first, second) => {
@@ -180,56 +182,79 @@ class StampTray extends Component {
 class Item extends Component {
   constructor(props) {
     super(props);
+    this.state = { isSmall: false };
     this.className = props.className;
     this.debug = props.debug;
     this.item_id = props.item_id;
-    this.removable = props.removable;
-    this.dragVisible = props.dragVisible;
     this.onDrag = {};
     this.x = props.x;
     this.y = props.y;
     this.z = props.z;
 
     // Necessary in ES6
+    this.initRef = this.initRef.bind(this);
     this.startDrag = this.startDrag.bind(this);
+    this.duringDrag = this.duringDrag.bind(this);
     this.stopDrag = this.stopDrag.bind(this);
   }
 
-  startDrag(e) {
+  initRef(ref) {
+    this.ref = ref;
+    processItem(this.context, this, this.item_id);
+  }
+
+  startDrag(e, ref) {
     const { act, config } = useBackend(this.context);
     const [zIndex, setZIndex] = useSharedState(this.context, "zindex", 0);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-    if (this.dragVisible) { setIsDragging(true); }
+
+    if (this.props.dragVisible) {
+      setIsDragging(true);
+    }
+
     setZIndex(prev => prev+1);
-    e.z = zIndex;
+    ref.z = zIndex;
+
     if (this.sfx_startDrag) {
       act('play_sfx', { name: this.sfx_startDrag, ckey: this.useUser ? config.client?.ckey : null });
     }
   }
 
-  stopDrag(e) {
+  duringDrag(e, ref) {
+    const { dX } = ref.state;
+    this.x = dX;
+    let isSmall = dX+100*this.ref.getBoundingClientRect().clientWidth/window.innerWidth >= 70;
+    this.setState({ isSmall: isSmall });
+    ref.setState({ center: isSmall });
+  }
+
+  stopDrag(ref) {
     const { act, config } = useBackend(this.context);
-    const { dX, dY } = e.state;
+    const { dX, dY } = ref.state;
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-    if (this.dragVisible) { setIsDragging(false); }
-    act('move_item', { id: this.item_id, x: dX, y: dY, z: e.z });
+
+    if (this.props.dragVisible) {
+      setIsDragging(false);
+    }
+
+    act('move_item', { id: this.item_id, x: dX, y: dY, z: ref.z });
     if (this.sfx_stopDrag) {
       act('play_sfx', { name: this.sfx_stopDrag, ckey: this.useUser ? config.client?.ckey : null });
     }
-    if (!this.ref) { return; }
-    const bins = document.getElementsByClassName('InspectorBooth__Receptacle');
-    for (let i = 0; i < bins.length; i++) {
-      if (overlap(this.ref, bins[i])) {
-        processItem(this.context, this.item_id, bins[i].dataset.exec);
-      }
+
+    if (this.ref) {
+      processItem(this.context, this, this.item_id);
     }
   }
 
   render() {
+    const { isSmall } = this.state;
+    const small = isSmall || this.x >= 70 ? '--small' : '';
     return (
-      <Draggable x={this.x} y={this.y} z={this.z} drag={this.onDrag}
-      startDrag={this.startDrag} stopDrag={this.stopDrag} debug={this.debug}>
-        <div data-id={this.item_id} data-z={this.z} className={this.className} ref={ref => (this.ref = ref)}>
+      <Draggable x={this.x} y={this.y} z={this.z} drag={this.onDrag} duringDrag={this.duringDrag}
+        startDrag={this.startDrag} stopDrag={this.stopDrag} center={isSmall} debug={this.debug}>
+        <div data-id={this.item_id} data-z={this.z} className={this.className+small}
+        style={`z-index: ${this.z};`} ref={this.initRef}>
           {this.renderItem && (this.renderItem())}
         </div>
       </Draggable>
@@ -251,10 +276,9 @@ class Paperwork extends Item {
   }
 
   processStamps() {
-    let stamps = this.stamps.replace(/<span/g, "<div><span").replace(/<\/span>/g, "</span></div>");
-    stamps = stamps.replace(/paper121x121/g, "InspectorBooth__paper121x121 paper121x121");
-    stamps = stamps.replace(/paper120x54/g, "InspectorBooth__paper120x54 paper120x54");
-    stamps = stamps.replace(/paper121x54/g, "InspectorBooth__paper121x54 paper121x54");
+    let stamps = this.stamps.replace(/paper121x121/g, 'InspectorBooth__paper121x121 paper121x121');
+    stamps = stamps.replace(/paper120x54/g, 'InspectorBooth__paper120x54 paper120x54');
+    stamps = stamps.replace(/paper121x54/g, 'InspectorBooth__paper121x54 paper121x54');
     return stamps;
   }
 
@@ -274,18 +298,6 @@ class Paperwork extends Item {
   }
 }
 
-const processItem = (context, item_id, result) => {
-  const { act, config } = useBackend(context);
-  switch (result) {
-    case 'take_item':
-      act(result, { id: item_id, ckey: config.client?.ckey });
-      break;
-    case 'drop_item':
-      act(result, { id: item_id });
-      break;
-  }
-};
-
 const Receptacle = (props, context) => {
   const [isDragging] = useLocalState(context, "isDragging", false);
   const className = 'InspectorBooth__Receptacle';
@@ -296,19 +308,38 @@ const Receptacle = (props, context) => {
   );
 };
 
+const processItem = (context, item, item_id) => {
+  const { act, config } = useBackend(context);
+  const bins = document.getElementsByClassName('InspectorBooth__Receptacle');
+  for (let i = 0; i < bins.length; i++) {
+    if (overlap(item.ref, bins[i])) {
+      let result = bins[i].dataset.exec;
+      switch (result) {
+        case 'take_item':
+          act(result, { id: item_id, ckey: config.client?.ckey });
+          return;
+        case 'drop_item':
+          act(result, { id: item_id });
+          return;
+      }
+    }
+  }
+};
+
 export const InspectorBooth = (props, context) => {
   const { data } = useBackend(context);
   const { debug, items=[] } = data;
   return (
     <Window width={775} height={500} >
       <div className={'InspectorBooth'} style={`background-image: url(${resolveAsset("desk.png")});`}>
-        {items.papers.map(item => (
+        {items.papers?.map(item => (
           <Paperwork removable dragVisible debug={debug===1} item_id={item.id} text={item.text} stamps={item.stamps}
           x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps+debug} />
         ))}
         <StampTray />
         <Receptacle text={"Drag here to eject"} type={'drop_item'} />
         <Receptacle text={"Drag here to take"} type={'take_item'} />
+        <Receptacle type={'shrink'} />
       </div>
     </Window>
   );

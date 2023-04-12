@@ -12,18 +12,19 @@ export class Draggable extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      center: props.center ?? false,
       dragging: false,
       initX: 0,
       initY: 0,
-      dX: this.props.x ?? 0,
-      dY: this.props.y ?? 0,
+      dX: props.x ?? 0,
+      dY: props.y ?? 0,
       pX: 0,
       pY: 0,
     };
-    this.debug = this.props.debug;
+    this.debug = props.debug;
     this.className = this.props.className;
-    this.drag = this.props.drag ?? {};
-    this.z = this.props.z ?? 0;
+    this.drag = props.drag ?? {};
+    this.z = props.z ?? 0;
 
     // Necessary in ES6
     this.initRef = this.initRef.bind(this);
@@ -49,36 +50,44 @@ export class Draggable extends Component {
     if (config.status < UI_INTERACTIVE) return;
     // Ignore if not left click
     if (e.button !== 0) return;
-    // const { initX, initY } = this.state;
     this.setState({
       pX: e.clientX,
       pY: e.clientY,
-      /* dX: 100*(e.clientX - initX - this.ref.clientWidth/2)/window.innerWidth,
-      dY: 100*(e.clientY - initY - this.ref.clientHeight/2)/window.innerHeight,*/
       dragging: true,
     });
     window.addEventListener("mousemove", this.duringDrag, false);
     window.addEventListener("mouseup", this.stopDrag, false);
-    if(this.props.startDrag) { this.props.startDrag(this); }
+    if(this.props.startDrag && typeof this.props.startDrag === 'function') {
+      this.props.startDrag(e, this);
+    }
   }
 
   duringDrag(e) {
     const { config } = useBackend(this.context);
     // Ignore if user is not allowed to interact
     if (config.status < UI_INTERACTIVE) return;
-    const { initX, initY } = this.state;
+    const { center, initX, initY } = this.state;
     let maxX, maxY = 0;
     if (this.ref) {
-    let bounds = this.ref.getBoundingClientRect();
+      let bounds = this.ref.getBoundingClientRect();
       maxX = 100*(1-bounds.width/window.innerWidth);
       maxY = 100*(1-bounds.height/window.innerHeight);
     }
-    // Multiply by 100/window size to convert from px to vw/vh
-    this.setState(prev => ({
-      dX: clamp(initX + 100*(e.clientX - prev.pX)/window.innerWidth, 0, maxX),
-      dY: clamp(initY + 100*(e.clientY - prev.pY)/window.innerHeight, 0, maxY),
-    }));
-    if(this.props.duringDrag) { this.props.duringDrag(this); }
+    if (!center) {
+      this.setState(prev => ({
+        // Multiply by 100/window size to convert from px to vw/vh
+        dX: clamp(initX + 100*(e.clientX - prev.pX)/window.innerWidth, 0, maxX),
+        dY: clamp(initY + 100*(e.clientY - prev.pY)/window.innerHeight, 0, maxY),
+      }));
+    } else {
+      this.setState({
+        dX: clamp((100*(e.clientX - this.ref.clientWidth/2) - initX)/window.innerWidth, 0, maxX),
+        dY: clamp((100*(e.clientY - this.ref.clientHeight/2) - initY)/window.innerHeight, 0, maxY),
+      });
+    }
+    if(this.props.duringDrag && typeof this.props.duringDrag === 'function') {
+      this.props.duringDrag(e, this);
+    }
   }
 
   // remove event listeners when the component is not being dragged
@@ -95,7 +104,9 @@ export class Draggable extends Component {
     });
     window.removeEventListener("mousemove", this.duringDrag, false);
     window.removeEventListener("mouseup", this.stopDrag, false);
-    if(this.props.stopDrag) { this.props.stopDrag(this); }
+    if(this.props.stopDrag && typeof this.props.stopDrag === 'function') {
+      this.props.stopDrag(this);
+    }
   }
 
   render() {
@@ -104,6 +115,9 @@ export class Draggable extends Component {
       position: "absolute",
       transform: `translate(${dX}vw, ${dY}vh)`,
       border: this.debug ? "2px solid rgba(255, 0, 0, 1)" : "none",
+      width: "fit-content",
+      "max-width": "100%",
+      display: "table",
       "z-index": this.z,
     };
     const debug = {
@@ -119,7 +133,7 @@ export class Draggable extends Component {
       <Fragment>
         <div style={{ ...style, ...dragging? this.drag : {} }}
         // eslint-disable-next-line react/jsx-handler-names
-          onMouseDown={this.startDrag} ref={this.initRef}>
+          onMouseDown={this.startDrag} ref={this.initRef} >
         { this.props.children }
         </div>
         {pos && <div style={debug}> x: {pos.left}, y: {pos.top}, z: {this.z} </div>}
