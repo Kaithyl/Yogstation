@@ -63,11 +63,13 @@ export class Draggable extends Component {
     // Ignore if user is not allowed to interact
     if (config.status < UI_INTERACTIVE) return;
     const { center, initX, initY } = this.state;
-    let maxX, maxY = 0;
+    let maxX, maxY, clientWidth, clientHeight = 0;
     if (this.self) {
       let bounds = this.self.getBoundingClientRect();
       maxX = 100*(1-bounds.width/window.innerWidth);
       maxY = 100*(1-bounds.height/window.innerHeight);
+      clientWidth = this.self.clientWidth;
+      clientHeight = this.self.clientHeight;
     }
     if (!center) {
       this.setState(prev => ({
@@ -77,8 +79,8 @@ export class Draggable extends Component {
       }));
     } else {
       this.setState({
-        dX: clamp(100*(e.clientX - this.self.clientWidth/2)/window.innerWidth, 0, maxX),
-        dY: clamp(100*(e.clientY - this.self.clientHeight/2)/window.innerHeight, 0, maxY),
+        dX: clamp(100*(e.clientX - clientWidth/2)/window.innerWidth, 0, maxX),
+        dY: clamp(100*(e.clientY - clientHeight/2)/window.innerHeight, 0, maxY),
       });
     }
     // if(this.props.duringDrag && typeof this.props.duringDrag === 'function') { this.props.duringDrag(e, this); }

@@ -47,8 +47,9 @@ $stamp-height: 8vh !default;
 .InspectorBooth__Speaker {
   position: absolute;
   right: 50%;
-  bottom: 5vh;
-  width: 4vw;
+  bottom: 7vh;
+  height: 6vh;
+  width: auto;
   transform: translateX(50%);
   pointer-events: auto;
 }

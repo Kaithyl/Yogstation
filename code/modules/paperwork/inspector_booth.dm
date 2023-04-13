@@ -58,7 +58,7 @@
 			if(user.transferItemToLoc(I, src))
 				user.visible_message("[user] inserts \the [I] into \the [src].", \
 				span_notice("You insert \the [I] into \the [src]."))
-				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 75, "y" = 60, "z" = 0)
+				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = -1, "y" = -1, "z" = 0)
 			else
 				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
 	else 
@@ -135,7 +135,7 @@
 					stampoverlay.pixel_x = rand(-2, 2)
 					stampoverlay.pixel_y = rand(-3, 2)
 					LAZYADD(P.stamped, P.icon_state)
-					P.add_overlay(stampoverlay)
+					add_overlay(stampoverlay)
 					. = TRUE
 		if("move_item")
 			if (params["id"] in item_list)

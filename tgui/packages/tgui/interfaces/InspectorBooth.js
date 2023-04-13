@@ -25,6 +25,10 @@ const sanitizeHTML = (input) => {
   return input;
 };
 
+const outOfBounds = (x, y) => {
+  return x < 0 || x > 110 || y < 0 || y > 110;
+};
+
 const overlap = (first, second) => {
   const x = first?.getBoundingClientRect();
   const y = second?.getBoundingClientRect();
@@ -159,7 +163,7 @@ class StampTray extends Component {
     const [zIndex] = useSharedState(this.context, "zindex", 0);
     const styles = {
       slide : {
-        "z-index": zIndex+2000,
+        "z-index": zIndex*2,
         transition: this.init ? "transform 300ms ease-in-out 0s" : "none",
       },
       out : { transform: "translateX(0vw)" },
@@ -189,7 +193,7 @@ class StampTray extends Component {
 class Item extends Draggable {
   constructor(props) {
     super(props);
-    this.state = { ...this.state, ...{ isSmall: false } };
+    this.state = { ...this.state, ...{ isSmall: false, trueZ: props.z } };
     this.removable = props.removable;
     this.className = props.className;
     this.debug = props.debug;
@@ -205,7 +209,17 @@ class Item extends Draggable {
   initRef(ref) {
     this.ref = ref;
     let shrink = document.getElementsByClassName('InspectorBooth__Receptacle--shrink')[0];
-    this.setState({ isSmall: inside(this.ref, shrink) });
+    let small = inside(this.ref, shrink);
+    // on initial spawn
+    const { act } = useBackend(this.context);
+    const [zIndex, setZIndex] = useSharedState(this.context, "zindex", 0);
+    const { trueZ } = this.state;
+    if (outOfBounds(this.props.x, this.props.y)) {
+      setZIndex(prev => prev+1);
+      this.setState({ trueZ: zIndex });
+      act('move_item', { id: this.item_id, x: 80, y: 50, z: trueZ });
+    }
+    this.setState({ isSmall: small, z: trueZ + (small ? 2000 : 0) });
   }
 
   startDrag(e) {
@@ -213,15 +227,12 @@ class Item extends Draggable {
     const { act, config } = useBackend(this.context);
     const [zIndex, setZIndex] = useSharedState(this.context, "zindex", 0);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-    const { isSmall } = this.state;
-    this.setState({ z: this.trueZ + (isSmall ? zIndex+1000 : 0) });
-
+    const { isSmall, trueZ } = this.state;
     if (this.props.dragVisible) {
       setIsDragging(true);
     }
     setZIndex(prev => prev+1);
-    this.trueZ = zIndex;
-    this.setState({ z: this.trueZ + (isSmall ? zIndex+1000 : 0) });
+    this.setState({ trueZ: zIndex, z: zIndex + (isSmall ? 2000 : 0) });
     if (this.sfx_startDrag) {
       act('play_sfx', { name: this.sfx_startDrag, ckey: this.useUser ? config.client?.ckey : null });
     }
@@ -229,7 +240,6 @@ class Item extends Draggable {
 
   duringDrag(e) {
     super.duringDrag(e);
-    const [zIndex] = useSharedState(this.context, "zindex", 0);
     const bins = document.getElementsByClassName('InspectorBooth__Receptacle--shrink');
     let shrink = false;
     for (let i = 0; i < bins.length; i++) {
@@ -238,24 +248,24 @@ class Item extends Draggable {
         break;
       }
     }
+    const { trueZ } = this.state;
     this.setState({
       isSmall: shrink,
       center: shrink,
-      z: this.trueZ + (shrink ? zIndex+1000 : 0),
+      z: trueZ + (shrink ? 2000 : 0),
     });
   }
 
   stopDrag(e) {
     super.stopDrag(e);
     const { act, config } = useBackend(this.context);
-    const [zIndex] = useSharedState(this.context, "zindex", 0);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-    const { isSmall, dX, dY, z } = this.state;
+    const { isSmall, dX, dY, trueZ } = this.state;
     if (this.props.dragVisible) {
       setIsDragging(false);
     }
-    if (isSmall) { this.setState({ z: this.trueZ+zIndex+1000 }); }
-    act('move_item', { id: this.item_id, x: dX, y: dY, z: z });
+    if (isSmall) { this.setState({ z: trueZ+2000 }); }
+    act('move_item', { id: this.item_id, x: dX, y: dY, z: trueZ });
     if (this.sfx_stopDrag) {
       act('play_sfx', { name: this.sfx_stopDrag, ckey: this.useUser ? config.client?.ckey : null });
     }
@@ -263,11 +273,12 @@ class Item extends Draggable {
   }
 
   renderChildren() {
-    const { isSmall, z } = this.state;
+    const { isSmall, dX, dY, z } = this.state;
     const small = isSmall ? '--small' : '';
+    const oob = outOfBounds(this.props.x, this.props.y);
     return (
       <div data-id={this.item_id} data-z={z} className={this.className+small} ref={this.initRef}>
-          {this.renderItem && (this.renderItem())}
+          {!oob && (this.renderItem && (this.renderItem())) }
       </div>
     );
   }
