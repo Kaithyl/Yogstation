@@ -14,29 +14,27 @@ export class Draggable extends Component {
     this.state = {
       center: props.center ?? false,
       dragging: false,
-      initX: 0,
-      initY: 0,
       dX: props.x ?? 0,
       dY: props.y ?? 0,
       pX: 0,
       pY: 0,
+      z: props.z ?? 0,
     };
+    this.trueZ = props.z ?? 0;
     this.debug = props.debug;
-    this.className = this.props.className;
-    this.drag = props.drag ?? {};
-    this.z = props.z ?? 0;
+    this.dragStyle = props.dragStyle ?? {};
 
     // Necessary in ES6
-    this.initRef = this.initRef.bind(this);
+    this.initializeRef = this.initializeRef.bind(this);
     this.startDrag = this.startDrag.bind(this);
     this.duringDrag = this.duringDrag.bind(this);
     this.stopDrag = this.stopDrag.bind(this);
   }
 
-  initRef(ref) {
-    this.ref = ref;
-    if (this.ref) {
-      let pos = ref.getBoundingClientRect();
+  initializeRef(ref) {
+    this.self = ref;
+    if (this.self) {
+      let pos = this.self.getBoundingClientRect();
       this.setState({
         initX: 100*pos.left/window.innerWidth,
         initY: 100*pos.top/window.innerHeight,
@@ -57,9 +55,7 @@ export class Draggable extends Component {
     });
     window.addEventListener("mousemove", this.duringDrag, false);
     window.addEventListener("mouseup", this.stopDrag, false);
-    if(this.props.startDrag && typeof this.props.startDrag === 'function') {
-      this.props.startDrag(e, this);
-    }
+    // if(this.props.startDrag && typeof this.props.startDrag === 'function') { this.props.startDrag(e, this); }
   }
 
   duringDrag(e) {
@@ -68,8 +64,8 @@ export class Draggable extends Component {
     if (config.status < UI_INTERACTIVE) return;
     const { center, initX, initY } = this.state;
     let maxX, maxY = 0;
-    if (this.ref) {
-      let bounds = this.ref.getBoundingClientRect();
+    if (this.self) {
+      let bounds = this.self.getBoundingClientRect();
       maxX = 100*(1-bounds.width/window.innerWidth);
       maxY = 100*(1-bounds.height/window.innerHeight);
     }
@@ -81,21 +77,19 @@ export class Draggable extends Component {
       }));
     } else {
       this.setState({
-        dX: clamp((100*(e.clientX - this.ref.clientWidth/2) - initX)/window.innerWidth, 0, maxX),
-        dY: clamp((100*(e.clientY - this.ref.clientHeight/2) - initY)/window.innerHeight, 0, maxY),
+        dX: clamp(100*(e.clientX - this.self.clientWidth/2)/window.innerWidth, 0, maxX),
+        dY: clamp(100*(e.clientY - this.self.clientHeight/2)/window.innerHeight, 0, maxY),
       });
     }
-    if(this.props.duringDrag && typeof this.props.duringDrag === 'function') {
-      this.props.duringDrag(e, this);
-    }
+    // if(this.props.duringDrag && typeof this.props.duringDrag === 'function') { this.props.duringDrag(e, this); }
   }
 
   // remove event listeners when the component is not being dragged
   stopDrag() {
     let left, top = 0;
-    if (this.ref) {
-      left = this.ref.getBoundingClientRect().left;
-      top = this.ref.getBoundingClientRect().top;
+    if (this.self) {
+      left = this.self.getBoundingClientRect().left;
+      top = this.self.getBoundingClientRect().top;
     }
     this.setState({
       initX: 100*left/window.innerWidth,
@@ -104,13 +98,11 @@ export class Draggable extends Component {
     });
     window.removeEventListener("mousemove", this.duringDrag, false);
     window.removeEventListener("mouseup", this.stopDrag, false);
-    if(this.props.stopDrag && typeof this.props.stopDrag === 'function') {
-      this.props.stopDrag(this);
-    }
+    // if(this.props.stopDrag && typeof this.props.stopDrag === 'function') { this.props.stopDrag(this); }
   }
 
   render() {
-    const { dX, dY, dragging } = this.state;
+    const { dragging, dX, dY, z } = this.state;
     const style = {
       position: "absolute",
       transform: `translate(${dX}vw, ${dY}vh)`,
@@ -118,7 +110,7 @@ export class Draggable extends Component {
       width: "fit-content",
       "max-width": "100%",
       display: "table",
-      "z-index": this.z,
+      "z-index": z,
     };
     const debug = {
       position: "absolute",
@@ -126,17 +118,18 @@ export class Draggable extends Component {
       color: "red",
     };
     let pos = null;
-    if (this.debug && this.ref) {
-      pos = this.ref.getBoundingClientRect();
+    if (this.debug && this.self) {
+      pos = this.self.getBoundingClientRect();
     }
     return (
       <Fragment>
-        <div style={{ ...style, ...dragging? this.drag : {} }}
+        <div style={{ ...style, ...dragging? this.dragStyle : {} }}
         // eslint-disable-next-line react/jsx-handler-names
-          onMouseDown={this.startDrag} ref={this.initRef} >
-        { this.props.children }
+        onMouseDown={this.startDrag} ref={this.initializeRef} >
+          { this.renderChildren && (this.renderChildren()) }
+          { this.props.children }
         </div>
-        {pos && <div style={debug}> x: {pos.left}, y: {pos.top}, z: {this.z} </div>}
+        {pos && <div style={debug}> x: {pos.left}, y: {pos.top}, z: {z} </div>}
       </Fragment>
     );
   }

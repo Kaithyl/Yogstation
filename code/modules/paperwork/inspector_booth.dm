@@ -58,7 +58,7 @@
 			if(user.transferItemToLoc(I, src))
 				user.visible_message("[user] inserts \the [I] into \the [src].", \
 				span_notice("You insert \the [I] into \the [src]."))
-				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 0, "y" = 0, "z" = 0)
+				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 75, "y" = 60, "z" = 0)
 			else
 				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
 	else 
@@ -117,7 +117,7 @@
 			var/name = params["name"]
 			if (name in sfx)
 				var/volume = params["volume"] ? params["volume"] : 50
-				var/vary = params["vary"] ? params["vary"] : 1
+				var/vary = params["vary"] ? params["vary"] > 0 : TRUE
 				var/extra_range = params["extrarange"] ? params["extrarange"] : -3
 				playsound(user ? user : src, sfx[name], volume, vary, extra_range)
 				. = TRUE
@@ -131,6 +131,11 @@
 					if (isnull(P.stamps))
 						P.stamps = sheet.css_tag()
 					P.stamps += sheet.icon_tag(type)
+					var/mutable_appearance/stampoverlay = mutable_appearance('icons/obj/bureaucracy.dmi', "paper_[P.icon_state]")
+					stampoverlay.pixel_x = rand(-2, 2)
+					stampoverlay.pixel_y = rand(-3, 2)
+					LAZYADD(P.stamped, P.icon_state)
+					P.add_overlay(stampoverlay)
 					. = TRUE
 		if("move_item")
 			if (params["id"] in item_list)

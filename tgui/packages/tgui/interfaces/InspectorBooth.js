@@ -32,6 +32,13 @@ const overlap = (first, second) => {
   return !(x.left > y.right || x.right < y.left || x.top > y.bottom || x.bottom < y.top);
 };
 
+const inside = (first, second) => {
+  const x = first?.getBoundingClientRect();
+  const y = second?.getBoundingClientRect();
+  if (x === undefined || y === undefined) { return false; }
+  return !(x.left < y.left || x.left > y.right || x.top < y.top || x.top > y.bottom);
+};
+
 class Stamp extends Component {
   constructor(props) {
     super(props);
@@ -152,7 +159,7 @@ class StampTray extends Component {
     const [zIndex] = useSharedState(this.context, "zindex", 0);
     const styles = {
       slide : {
-        "z-index": zIndex+100,
+        "z-index": zIndex+2000,
         transition: this.init ? "transform 300ms ease-in-out 0s" : "none",
       },
       out : { transform: "translateX(0vw)" },
@@ -169,7 +176,7 @@ class StampTray extends Component {
         {stamps.map(stamp => (
           <span key={stamp.type}>
             { this.createSegs(1) }
-            <Stamp type={stamp.type} icon={stamp.icon} />
+            <Stamp type={stamp.type} icon={resolveAsset(stamp.icon)} />
           </span>
         ))}
         { this.createSegs(1) }
@@ -179,17 +186,14 @@ class StampTray extends Component {
   }
 }
 
-class Item extends Component {
+class Item extends Draggable {
   constructor(props) {
     super(props);
-    this.state = { isSmall: false };
+    this.state = { ...this.state, ...{ isSmall: false } };
+    this.removable = props.removable;
     this.className = props.className;
     this.debug = props.debug;
     this.item_id = props.item_id;
-    this.onDrag = {};
-    this.x = props.x;
-    this.y = props.y;
-    this.z = props.z;
 
     // Necessary in ES6
     this.initRef = this.initRef.bind(this);
@@ -200,64 +204,71 @@ class Item extends Component {
 
   initRef(ref) {
     this.ref = ref;
-    processItem(this.context, this, this.item_id);
+    let shrink = document.getElementsByClassName('InspectorBooth__Receptacle--shrink')[0];
+    this.setState({ isSmall: inside(this.ref, shrink) });
   }
 
-  startDrag(e, ref) {
+  startDrag(e) {
+    super.startDrag(e);
     const { act, config } = useBackend(this.context);
     const [zIndex, setZIndex] = useSharedState(this.context, "zindex", 0);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
+    const { isSmall } = this.state;
+    this.setState({ z: this.trueZ + (isSmall ? zIndex+1000 : 0) });
 
     if (this.props.dragVisible) {
       setIsDragging(true);
     }
-
     setZIndex(prev => prev+1);
-    ref.z = zIndex;
-
+    this.trueZ = zIndex;
+    this.setState({ z: this.trueZ + (isSmall ? zIndex+1000 : 0) });
     if (this.sfx_startDrag) {
       act('play_sfx', { name: this.sfx_startDrag, ckey: this.useUser ? config.client?.ckey : null });
     }
   }
 
-  duringDrag(e, ref) {
-    const { dX } = ref.state;
-    this.x = dX;
-    let isSmall = dX+100*this.ref.getBoundingClientRect().clientWidth/window.innerWidth >= 70;
-    this.setState({ isSmall: isSmall });
-    ref.setState({ center: isSmall });
+  duringDrag(e) {
+    super.duringDrag(e);
+    const [zIndex] = useSharedState(this.context, "zindex", 0);
+    const bins = document.getElementsByClassName('InspectorBooth__Receptacle--shrink');
+    let shrink = false;
+    for (let i = 0; i < bins.length; i++) {
+      if (inside(this.ref, bins[i])) {
+        shrink = true;
+        break;
+      }
+    }
+    this.setState({
+      isSmall: shrink,
+      center: shrink,
+      z: this.trueZ + (shrink ? zIndex+1000 : 0),
+    });
   }
 
-  stopDrag(ref) {
+  stopDrag(e) {
+    super.stopDrag(e);
     const { act, config } = useBackend(this.context);
-    const { dX, dY } = ref.state;
+    const [zIndex] = useSharedState(this.context, "zindex", 0);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-
+    const { isSmall, dX, dY, z } = this.state;
     if (this.props.dragVisible) {
       setIsDragging(false);
     }
-
-    act('move_item', { id: this.item_id, x: dX, y: dY, z: ref.z });
+    if (isSmall) { this.setState({ z: this.trueZ+zIndex+1000 }); }
+    act('move_item', { id: this.item_id, x: dX, y: dY, z: z });
     if (this.sfx_stopDrag) {
       act('play_sfx', { name: this.sfx_stopDrag, ckey: this.useUser ? config.client?.ckey : null });
     }
-
-    if (this.ref) {
-      processItem(this.context, this, this.item_id);
-    }
+    processItem(this.context, this, this.item_id);
   }
 
-  render() {
-    const { isSmall } = this.state;
-    const small = isSmall || this.x >= 70 ? '--small' : '';
+  renderChildren() {
+    const { isSmall, z } = this.state;
+    const small = isSmall ? '--small' : '';
     return (
-      <Draggable x={this.x} y={this.y} z={this.z} drag={this.onDrag} duringDrag={this.duringDrag}
-        startDrag={this.startDrag} stopDrag={this.stopDrag} center={isSmall} debug={this.debug}>
-        <div data-id={this.item_id} data-z={this.z} className={this.className+small}
-        style={`z-index: ${this.z};`} ref={this.initRef}>
+      <div data-id={this.item_id} data-z={z} className={this.className+small} ref={this.initRef}>
           {this.renderItem && (this.renderItem())}
-        </div>
-      </Draggable>
+      </div>
     );
   }
 }
@@ -266,7 +277,7 @@ class Paperwork extends Item {
   constructor(props) {
     super(props);
     this.className = 'InspectorBooth__Items__paper';
-    this.onDrag = { "box-shadow": "-1vw 3vh 0 0 rgba(0, 0, 0, .2)" };
+    this.dragStyle = { "box-shadow": "-1vw 3vh 0 0 rgba(0, 0, 0, .2)" };
     this.useUser = true;
     this.sfx_startDrag = 'drag_start';
     this.sfx_stopDrag = 'drag_stop';
@@ -275,51 +286,72 @@ class Paperwork extends Item {
     this.stamps = props.stamps ?? " ";
   }
 
-  processStamps() {
-    let stamps = this.stamps.replace(/paper121x121/g, 'InspectorBooth__paper121x121 paper121x121');
-    stamps = stamps.replace(/paper120x54/g, 'InspectorBooth__paper120x54 paper120x54');
-    stamps = stamps.replace(/paper121x54/g, 'InspectorBooth__paper121x54 paper121x54');
-    return stamps;
-  }
-
   renderItem() {
     return (
       <Fragment>
         <img src={resolveAsset("paper.png")} className={this.className+'-icon'} />
-        {this.debug && (<div className={this.className+'-textBox'}> {sanitizeHTML(this.text)+this.processStamps()} </div>)}
+        {this.debug && (<div className={this.className+'-textBox'}> {sanitizeHTML(this.text)+this.stamps} </div>)}
         {!this.debug && (<div className={this.className+'-textBox'}
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: sanitizeHTML(this.text) }} />)}
         {!this.debug && (<div className={this.className+'-stamps'}
         // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: this.processStamps() }} />)}
+        dangerouslySetInnerHTML={{ __html: this.stamps }} />)}
       </Fragment>
     );
   }
 }
 
-const Receptacle = (props, context) => {
-  const [isDragging] = useLocalState(context, "isDragging", false);
-  const className = 'InspectorBooth__Receptacle';
+const Speaker = (props, context) => {
+  const { act, config } = useBackend(context);
+  // We don't want players to be able to spam this
+  const cooldown = 3000;
+  const [timer, setTimer] = useSharedState(context, "speaker_timer", new Date().getTime()-(cooldown+1));
   return (
-    <div className={className+' '+className+'--'+props.type} data-exec={props.type}>
-      {isDragging && (props.text) }
+    <img src={resolveAsset("speaker.png")} className={'InspectorBooth__Speaker'}
+    onClick={() => {
+      const time = new Date().getTime();
+      if (time - timer > cooldown) {
+        act('play_sfx', { name: 'speaker', ckey: config.client?.ckey, vary: -1 });
+        setTimer(time);
+      }
+    }} />
+  );
+};
+
+const Receptacle = (props, context) => {
+  // const [isDragging] = useLocalState(context, "isDragging", false);
+  const [zIndex] = useSharedState(context, "zindex", 0);
+  const className = 'InspectorBooth__Receptacle';
+  const style = {
+    "z-index": props.renderAboveItems? zIndex+1000 : "auto",
+  };
+  return (
+    <div className={className+' '+className+'--'+props.type} style={style}
+    data-exec={props.type} data-collision={props.collision ?? 'overlap'}>
+      { props.children }
     </div>
   );
 };
 
 const processItem = (context, item, item_id) => {
   const { act, config } = useBackend(context);
+  const { isSmall } = item.state;
   const bins = document.getElementsByClassName('InspectorBooth__Receptacle');
   for (let i = 0; i < bins.length; i++) {
-    if (overlap(item.ref, bins[i])) {
+    let collision = bins[i].dataset.collision === 'overlap' ? overlap : inside;
+    if (collision(item.ref, bins[i])) {
       let result = bins[i].dataset.exec;
       switch (result) {
-        case 'take_item':
-          act(result, { id: item_id, ckey: config.client?.ckey });
-          return;
         case 'drop_item':
-          act(result, { id: item_id });
+          if (item.removable) {
+            act(result, { id: item_id });
+          }
+          return;
+        case 'take_item':
+          if (item.removable && isSmall) {
+            act(result, { id: item_id, ckey: config.client?.ckey });
+          }
           return;
       }
     }
@@ -329,17 +361,26 @@ const processItem = (context, item, item_id) => {
 export const InspectorBooth = (props, context) => {
   const { data } = useBackend(context);
   const { debug, items=[] } = data;
+  const className = 'InspectorBooth';
   return (
     <Window width={775} height={500} >
-      <div className={'InspectorBooth'} style={`background-image: url(${resolveAsset("desk.png")});`}>
+      <div className={className} style={`background-image: url(${resolveAsset("desk_bg.png")});`}>
         {items.papers?.map(item => (
           <Paperwork removable dragVisible debug={debug===1} item_id={item.id} text={item.text} stamps={item.stamps}
           x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps+debug} />
         ))}
         <StampTray />
-        <Receptacle text={"Drag here to eject"} type={'drop_item'} />
-        <Receptacle text={"Drag here to take"} type={'take_item'} />
-        <Receptacle type={'shrink'} />
+        <Receptacle type={'shrink'} renderAboveItems>
+          <Receptacle type={'drop_item'} collision={'inside'} >
+            <Speaker />
+          </Receptacle>
+            <div className={className+'__Desk'} >
+              <img src={resolveAsset("desk_top.png")} className={className+'__Desk__top'} />
+                <span className={className+'__Desk__filler'} />
+              <img src={resolveAsset("desk_bottom.png")} className={className+'__Desk__bottom'} />
+            </div>
+          <Receptacle type={'take_item'} />
+        </Receptacle>
       </div>
     </Window>
   );
