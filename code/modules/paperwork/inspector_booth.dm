@@ -9,27 +9,29 @@
 	icon = 'icons/obj/machines/sleeper.dmi'
 	icon_state = "sleeper"
 	// TODO: add reduced power usage for part upgrades
-	//use_power = IDLE_POWER_USE
-	//idle_power_usage = 50
+	//use_power = NO_POWER_USE
+	//idle_power_usage = 20
+	//active_power_usage = 50
 	circuit = /obj/item/circuitboard/machine/inspector_booth
 	
 	// TODO: add increased health and armor for part upgrades
 	// armor = list(MELEE = 25, BULLET = 10, LASER = 10, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 50, ACID = 70)
 	// max_integrity = 200
 
-	var/debug = FALSE
-	var/item_ids = 0
-	var/item_list = list()
-
 	// TODO: add increased item capacity for part upgrades
 	var/max_items = 5
 
+	// Internal data
+	var/item_ids = 0
+	var/item_list = list()
+	var/list/concurrent_users = list()
+
+	// Reference data
 	var/stamp_types = list(
 		"stamp-ok" = "stamp_approve.png",
 		"stamp-deny" = "stamp_deny.png",
 		"stamp-clown" = "stamp_clown.png",
 	)
-
 	var/sfx = list(
 		"speaker" = 'sound/machines/inspector_booth/speech-announce.wav',
 		"tray_open" = 'sound/machines/inspector_booth/stampbar-open.wav',
@@ -38,10 +40,15 @@
 		"stamp_down" = 'sound/machines/inspector_booth/stamp-down.wav',
 		"drag_start" = 'sound/machines/inspector_booth/paper-dragstart1.wav',
 		"drag_stop" = 'sound/machines/inspector_booth/paper-dragstop1.wav',
+		"card_drag_start" = 'sound/machines/inspector_booth/paper-dragstart0.wav',
+		"card_drag_stop" = 'sound/machines/inspector_booth/paper-dragstop0.wav',
 	)
 
 /obj/machinery/inspector_booth/Initialize()
 	. = ..()
+
+/obj/machinery/inspector_booth/Destroy()
+	return ..()
 
 /obj/machinery/inspector_booth/attackby(obj/item/I, mob/user, params)
 	if (contents.len >= max_items)
@@ -58,27 +65,34 @@
 			if(user.transferItemToLoc(I, src))
 				user.visible_message("[user] inserts \the [I] into \the [src].", \
 				span_notice("You insert \the [I] into \the [src]."))
-				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = -1, "y" = -1, "z" = 0)
+				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = -11, "y" = -11, "z" = 0)
 			else
 				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
 	else 
 		to_chat(user, span_warning("\The [src] rejects \the [I]."))
 
-
 /obj/machinery/inspector_booth/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
+	if (!ui)
+		var/user_ref = REF(user)
+		var/is_living = isliving(user)
+		if(is_living)
+			concurrent_users += user_ref
 		ui = new(user, src, "InspectorBooth", name)
 		ui.open()
 
+/obj/machinery/inspector_booth/ui_close(mob/user)
+	var/user_ref = REF(user)
+	concurrent_users -= user_ref
+
 /obj/machinery/inspector_booth/ui_data(mob/living/carbon/human/user)
 	var/list/data = list()
-		
-	data["debug"] = debug
 
+	// Process items
 	var/list/items = list()
 	for (var/key in item_list)
 		var/I = item_list[key]["item"]
+		
 		if (istype(I, /obj/item/paper))
 			var/obj/item/paper/P = I
 			var/text = P.info
@@ -86,14 +100,15 @@
 				if(istype(P.written[i] ,/datum/langtext))
 					var/datum/langtext/L = P.written[i]
 					text += "\n" + L.text
-			// Byond combines lists when adding by default but we want a list of lists
 			items["papers"] += list(list("id" = key, "text" = text, "stamps" = P.stamps, "x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
+		
 		if (istype(I, /obj/item/card/id))
 			var/obj/item/card/id/D = I
 			items["idcards"] += list(list("id" = key, "name" = D.registered_name, "age" = D.registered_age, "job" = D.assignment, "original_job" = D.originalassignment))
 	
 	data["items"] = items
 
+	// Process stamp components
 	var/list/stamps = list()
 	for (var/obj/item/stamp/S in component_parts)
 		var/name = S.icon_state
@@ -110,7 +125,7 @@
 		return
 	
 	var/mob/living/user = params["ckey"] ? get_mob_by_key(params["ckey"]) : null
-	var/obj/item = (params["id"] && params["id"] in item_list) ? item_list[params["id"]]["item"] : null
+	var/obj/item = (params["id"] in item_list) ? item_list[params["id"]]["item"] : null
 
 	switch(action)
 		if("play_sfx")
@@ -131,11 +146,11 @@
 					if (isnull(P.stamps))
 						P.stamps = sheet.css_tag()
 					P.stamps += sheet.icon_tag(type)
-					var/mutable_appearance/stampoverlay = mutable_appearance('icons/obj/bureaucracy.dmi', "paper_[P.icon_state]")
+					var/mutable_appearance/stampoverlay = mutable_appearance('icons/obj/bureaucracy.dmi', "paper_[type]")
 					stampoverlay.pixel_x = rand(-2, 2)
 					stampoverlay.pixel_y = rand(-3, 2)
-					LAZYADD(P.stamped, P.icon_state)
-					add_overlay(stampoverlay)
+					LAZYADD(P.stamped, type)
+					P.add_overlay(stampoverlay)
 					. = TRUE
 		if("move_item")
 			if (params["id"] in item_list)

@@ -15,9 +15,23 @@ $stamp-height: 8vh !default;
   padding: 0;
 }
 
+@mixin --reflect {
+  position: absolute;
+  opacity: (0.2);
+  pointer-events: none;
+}
+
+#InspectorBooth__Window {
+  width: 100%;
+  height: 100%;
+  // border: 0.5vmin dashed rgba(255, 255, 255, 0.2);
+}
+
 .InspectorBooth {
+  position: relative;
   background-repeat: space;
-  height: 100vh;
+  height: 100%;
+  overflow: hidden;
   -ms-user-select: none;
   user-select: none;
 }
@@ -33,13 +47,31 @@ $stamp-height: 8vh !default;
   box-shadow: 0vw 7vh 0 0 rgba(0, 0, 0, .2);
 
   &__stamp {
+    margin-left: -8.27vw;
+    width: 6.9vw;
+    transform: translateY(0vh);
+    transition: transform 150ms ease-out 0s;
     z-index: -1;
     pointer-events: auto;
+
+    &--down {
+      @extend .InspectorBooth__Tray__stamp;
+      transform: translateY(5vh);
+    }
+
+    &__cover {
+      margin-left: -1.23vw;
+      width: 9.487vw;
+    }
   }
 
   &__segment {
     position: relative;
     z-index: -1;
+    pointer-events: auto;
+  }
+
+  &__end {
     pointer-events: auto;
   }
 }
@@ -63,6 +95,10 @@ $stamp-height: 8vh !default;
   flex-direction: column;
   flex: 1 1;
 
+  &__top {
+    height: 7vh;
+  }
+
   &__bottom {
     align-self: flex-end;
   }
@@ -77,7 +113,6 @@ $stamp-height: 8vh !default;
   & > img {
     @include clear-margins;
     width: 100%;
-    height: auto;
     flex-grow: 1 1px;
     flex-shrink: 1;
   }
@@ -111,6 +146,7 @@ $stamp-height: 8vh !default;
 }
 
 .InspectorBooth__Items {
+
   &__paper {
     width: 30vw;
     height: 60vh;
@@ -120,6 +156,11 @@ $stamp-height: 8vh !default;
     flex-direction: column;
     justify-content: flex-start;
     overflow: hidden;
+
+    &--reflect {
+      @extend .InspectorBooth__Items__paper--small;
+      @include --reflect;
+    }
 
     &--small {
       @extend .InspectorBooth__Items__paper;
@@ -152,7 +193,7 @@ $stamp-height: 8vh !default;
 
       .InspectorBooth__Items__paper-stamps {
         margin: 0 -12vmin 0 -12vmin;
-        transform: scale(0.4) !important;
+        transform: scale(0.4);
 
         & > span {
           margin: -4vmin -2vmin 0 -2vmin;

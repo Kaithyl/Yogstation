@@ -8,9 +8,12 @@ import { Fragment, Component } from 'inferno';
 import { resolveAsset } from '../assets';
 import { useBackend, useSharedState, useLocalState } from '../backend';
 import { Window } from '../layouts';
+import { createLogger } from '../logging';
 
 import { Draggable } from '../components/Draggable';
 import DOMPurify from 'dompurify';
+
+const logger = createLogger('InspectorBooth');
 
 // DO NOT REMOVE THIS IS IMPORTANT FOR PREVENTING INJECTION ATTACKS
 const sanitizeHTML = (input) => {
@@ -36,11 +39,12 @@ const overlap = (first, second) => {
   return !(x.left > y.right || x.right < y.left || x.top > y.bottom || x.bottom < y.top);
 };
 
-const inside = (first, second) => {
+// If one element would clip another
+const clips = (first, second) => {
   const x = first?.getBoundingClientRect();
   const y = second?.getBoundingClientRect();
   if (x === undefined || y === undefined) { return false; }
-  return !(x.left < y.left || x.left > y.right || x.top < y.top || x.top > y.bottom);
+  return !(x.left+2 < y.left || x.left > y.right || x.top+2 < y.top || x.top > y.bottom);
 };
 
 class Stamp extends Component {
@@ -97,25 +101,13 @@ class Stamp extends Component {
 
   render() {
     const [active] = useSharedState(this.context, this.type+"_active", false);
-    const styles = {
-      tray_cover : {
-        "margin-left": "-1.23vw",
-        width:"9.487vw",
-      },
-      stamp : {
-        "margin-left": "-8.27vw",
-        width: "6.9vw",
-        transition: "transform 150ms ease-out 0s",
-      },
-      up: { transform: "translateY(0vh)" },
-      down: { transform: "translateY(5vh)" },
-    };
+    const className = 'InspectorBooth__Tray__stamp';
+    const down = active ? '--down' : '';
     return (
       <span>
-        <img src={resolveAsset("tray_cover.png")} style={styles.tray_cover} />
-        <img className={'InspectorBooth__Tray__stamp'} src={resolveAsset(this.icon)} onClick={this.handleClick}
-            ref={ref => (this.ref = ref)} style={{ ...styles.stamp, ...active ? styles.down : styles.up }} />
-        {this.debuglog && (<div style={`position: absolute; left: 0; top: 0;`}> {this.debuglog} </div>)}
+        <img className={className+'__cover'} src={resolveAsset("tray_cover.png")} />
+        <img className={className+down} src={resolveAsset(this.icon)}
+        onClick={this.handleClick} ref={ref => (this.ref = ref)} />
       </span>
     );
   }
@@ -150,7 +142,7 @@ class StampTray extends Component {
   createSegs(num) {
     let segs = [];
     for (let i = 0; i < num; i++) {
-      segs.push(<img className={'InspectorBooth__Tray__segment'}
+      segs.push(<img className='InspectorBooth__Tray__segment'
         src={resolveAsset("tray_segment.png")} style={`width: 6vw;`} />);
     }
     return segs;
@@ -170,8 +162,6 @@ class StampTray extends Component {
       in : { transform: `translateX(${this.slide_width}vw)` },
       tray_end : {
         width: `${this.end_width}vw`,
-        position: "relative",
-        "pointer-events": "auto",
       },
     };
     const className = `InspectorBooth__Tray`;
@@ -184,7 +174,8 @@ class StampTray extends Component {
           </span>
         ))}
         { this.createSegs(1) }
-        <img src={resolveAsset("tray_end.png")} style={styles.tray_end} onClick={this.handleToggle} />
+        <img src={resolveAsset("tray_end.png")} className={className+"__end"}
+        style={styles.tray_end} onClick={this.handleToggle} />
       </div>
     );
   }
@@ -209,7 +200,7 @@ class Item extends Draggable {
   initRef(ref) {
     this.ref = ref;
     let shrink = document.getElementsByClassName('InspectorBooth__Receptacle--shrink')[0];
-    let small = inside(this.ref, shrink);
+    let small = clips(this.ref, shrink);
     // on initial spawn
     const { act } = useBackend(this.context);
     const [zIndex, setZIndex] = useSharedState(this.context, "zindex", 0);
@@ -227,7 +218,7 @@ class Item extends Draggable {
     const { act, config } = useBackend(this.context);
     const [zIndex, setZIndex] = useSharedState(this.context, "zindex", 0);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-    const { isSmall, trueZ } = this.state;
+    const { isSmall } = this.state;
     if (this.props.dragVisible) {
       setIsDragging(true);
     }
@@ -243,7 +234,7 @@ class Item extends Draggable {
     const bins = document.getElementsByClassName('InspectorBooth__Receptacle--shrink');
     let shrink = false;
     for (let i = 0; i < bins.length; i++) {
-      if (inside(this.ref, bins[i])) {
+      if (clips(this.ref, bins[i])) {
         shrink = true;
         break;
       }
@@ -260,11 +251,10 @@ class Item extends Draggable {
     super.stopDrag(e);
     const { act, config } = useBackend(this.context);
     const [, setIsDragging] = useLocalState(this.context, "isDragging", false);
-    const { isSmall, dX, dY, trueZ } = this.state;
+    const { dX, dY, trueZ } = this.state;
     if (this.props.dragVisible) {
       setIsDragging(false);
     }
-    if (isSmall) { this.setState({ z: trueZ+2000 }); }
     act('move_item', { id: this.item_id, x: dX, y: dY, z: trueZ });
     if (this.sfx_stopDrag) {
       act('play_sfx', { name: this.sfx_stopDrag, ckey: this.useUser ? config.client?.ckey : null });
@@ -278,7 +268,11 @@ class Item extends Draggable {
     const oob = outOfBounds(this.props.x, this.props.y);
     return (
       <div data-id={this.item_id} data-z={z} className={this.className+small} ref={this.initRef}>
-          {!oob && (this.renderItem && (this.renderItem())) }
+        {(this.props.reflectable && isSmall && !oob && this.renderItem) && (
+          <Reflection className={this.className} x={dX} y={dY} z={z}>
+            {this.renderItem()}
+          </Reflection>)}
+          {(!oob && this.renderItem) && (this.renderItem()) }
       </div>
     );
   }
@@ -300,7 +294,7 @@ class Paperwork extends Item {
   renderItem() {
     return (
       <Fragment>
-        <img src={resolveAsset("paper.png")} className={this.className+'-icon'} />
+        <img className={this.className+'-icon'} src={resolveAsset("paper.png")} />
         {this.debug && (<div className={this.className+'-textBox'}> {sanitizeHTML(this.text)+this.stamps} </div>)}
         {!this.debug && (<div className={this.className+'-textBox'}
         // eslint-disable-next-line react/no-danger
@@ -319,7 +313,7 @@ const Speaker = (props, context) => {
   const cooldown = 3000;
   const [timer, setTimer] = useSharedState(context, "speaker_timer", new Date().getTime()-(cooldown+1));
   return (
-    <img src={resolveAsset("speaker.png")} className={'InspectorBooth__Speaker'}
+    <img className='InspectorBooth__Speaker' src={resolveAsset("speaker.png")}
     onClick={() => {
       const time = new Date().getTime();
       if (time - timer > cooldown) {
@@ -327,6 +321,18 @@ const Speaker = (props, context) => {
         setTimer(time);
       }
     }} />
+  );
+};
+
+const Reflection = (props) => {
+  const axis = 47;
+  const y = Math.min(props.y, axis-props.y)-props.y;
+  const show = true; // y > -48;
+  const style = `transform: translateY(${y}vh) scale(1, -1) !important;`;
+  return(
+    <div className={props.className+'--reflect'} style={style}>
+      {show && (props.children)}
+    </div>
   );
 };
 
@@ -350,7 +356,7 @@ const processItem = (context, item, item_id) => {
   const { isSmall } = item.state;
   const bins = document.getElementsByClassName('InspectorBooth__Receptacle');
   for (let i = 0; i < bins.length; i++) {
-    let collision = bins[i].dataset.collision === 'overlap' ? overlap : inside;
+    let collision = bins[i].dataset.collision === 'overlap' ? overlap : clips;
     if (collision(item.ref, bins[i])) {
       let result = bins[i].dataset.exec;
       switch (result) {
@@ -371,25 +377,26 @@ const processItem = (context, item, item_id) => {
 
 export const InspectorBooth = (props, context) => {
   const { data } = useBackend(context);
-  const { debug, items=[] } = data;
+  const { items=[] } = data;
   const className = 'InspectorBooth';
   return (
     <Window width={775} height={500} >
       <div className={className} style={`background-image: url(${resolveAsset("desk_bg.png")});`}>
         {items.papers?.map(item => (
-          <Paperwork removable dragVisible debug={debug===1} item_id={item.id} text={item.text} stamps={item.stamps}
-          x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps+debug} />
+          <Paperwork removable reflectable dragVisible item_id={item.id} text={item.text} stamps={item.stamps}
+          x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps} />
         ))}
         <StampTray />
         <Receptacle type={'shrink'} renderAboveItems>
           <Receptacle type={'drop_item'} collision={'inside'} >
+            <img id={className+'__Window'} src={resolveAsset("window.png")} />
             <Speaker />
           </Receptacle>
-            <div className={className+'__Desk'} >
-              <img src={resolveAsset("desk_top.png")} className={className+'__Desk__top'} />
-                <span className={className+'__Desk__filler'} />
-              <img src={resolveAsset("desk_bottom.png")} className={className+'__Desk__bottom'} />
-            </div>
+          <div className={className+'__Desk'} >
+            <img className={className+'__Desk__top'} src={resolveAsset("desk_top.png")} />
+              <span className={className+'__Desk__filler'} />
+            <img className={className+'__Desk__bottom'} src={resolveAsset("desk_bottom.png")} />
+          </div>
           <Receptacle type={'take_item'} />
         </Receptacle>
       </div>

@@ -58,6 +58,7 @@
 /datum/asset/simple/inspector_booth
 	assets = list(
 		"desk_bg.png" = 'icons/UI_Icons/tgui/inspector_booth/desk_bg.png',
+		"window.png" = 'icons/UI_Icons/tgui/inspector_booth/window.png',
 		"speaker.png" = 'icons/UI_Icons/tgui/inspector_booth/speaker.png',
 		"desk_top.png" = 'icons/UI_Icons/tgui/inspector_booth/desk_top.png',
 		"desk_bottom.png" = 'icons/UI_Icons/tgui/inspector_booth/desk_bottom.png',
