@@ -4,6 +4,7 @@
  * @license MIT
  */
 
+/* eslint-disable react/no-unused-state */
 import { Fragment, Component } from 'inferno';
 import { useBackend } from '../backend';
 import { UI_INTERACTIVE } from '../constants';
@@ -22,7 +23,7 @@ export class Draggable extends Component {
     };
     this.trueZ = props.z ?? 0;
     this.debug = props.debug;
-    this.dragStyle = props.dragStyle ?? {};
+    this.dropShadow = props.dropShadow ?? {};
 
     // Necessary in ES6
     this.initRef = this.initRef.bind(this);
@@ -104,7 +105,7 @@ export class Draggable extends Component {
   }
 
   render() {
-    const { dragging, dX, dY, z } = this.state;
+    const { dX, dY, z } = this.state;
     const style = {
       position: "absolute",
       transform: `translate(${dX}vw, ${dY}vh)`,
@@ -126,7 +127,7 @@ export class Draggable extends Component {
     return (
       <Fragment>
         { this.renderOuter && (this.renderOuter()) }
-        <div style={{ ...style, ...dragging? this.dragStyle : {} }}
+        <div style={style}
         // eslint-disable-next-line react/jsx-handler-names
         onMouseDown={this.startDrag} ref={this.initRef} >
           { this.renderChildren && (this.renderChildren()) }

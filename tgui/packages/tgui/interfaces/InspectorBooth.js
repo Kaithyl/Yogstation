@@ -5,7 +5,6 @@
  */
 
 import { Fragment, Component } from 'inferno';
-import { debounce } from 'common/timer';
 import { resolveAsset } from '../assets';
 import { useBackend, useSharedState, useLocalState } from '../backend';
 import { Window } from '../layouts';
@@ -186,10 +185,13 @@ class Item extends Draggable {
   constructor(props) {
     super(props);
     this.state = { ...this.state, ...{ isSmall: false, trueZ: props.z } };
+    this.r = 0;
     this.removable = props.removable;
     this.className = props.className;
-    this.debug = props.debug;
     this.item_id = props.item_id;
+    this.useUser = true;
+    this.sfx_startDrag = 'drag_start';
+    this.sfx_stopDrag = 'drag_stop';
 
     // Necessary in ES6
     this.startDrag = this.startDrag.bind(this);
@@ -262,22 +264,31 @@ class Item extends Draggable {
   }
 
   renderOuter() {
-    const { isSmall, dX, dY, z } = this.state;
+    const { isSmall, z } = this.state;
+    const bottom = this.ref?.getBoundingClientRect()?.bottom ?? 0;
+    const left = this.ref?.getBoundingClientRect()?.left ?? 0;
     if (this.props.reflectable && isSmall && this.renderItem) {
       return (
-        <Reflection className={this.className} x={dX} y={dY} z={z}>
-          {this.renderItem()}
-        </Reflection>
+        // We're calculating y and height as px instead of % because
+        // its less of a headache for reflections
+        <div className={'InspectorBooth__Window__glass'}>
+          <Reflection className={this.className} x={left} z={z} b={bottom} r={this.r}>
+              {this.renderItem()}
+          </Reflection>
+        </div>
       );
     }
     return '';
   }
 
   renderChildren() {
-    const { isSmall, z } = this.state;
+    const { isSmall, dragging, z } = this.state;
+    let style = isSmall ? `transform: rotate(${this.r}deg); ` : ` `;
+    style += (dragging && this.dropShadow) ? this.dropShadow : ``;
     const small = isSmall ? '--small' : '';
     return (
-      <div data-id={this.item_id} data-z={z} className={this.className+small} ref={ref => (this.ref = ref)}>
+      <div data-id={this.item_id} data-z={z} className={this.className+small}
+      style={style} ref={ref => (this.ref = ref)}>
           {(this.renderItem) && (this.renderItem()) }
       </div>
     );
@@ -288,26 +299,39 @@ class Paperwork extends Item {
   constructor(props) {
     super(props);
     this.className = 'InspectorBooth__Items__paper';
-    this.dragStyle = { "box-shadow": "-1vw 3vh 0 0 rgba(0, 0, 0, .2)" };
-    this.useUser = true;
-    this.sfx_startDrag = 'drag_start';
-    this.sfx_stopDrag = 'drag_stop';
-
-    this.text = props.text ?? " ";
-    this.stamps = props.stamps ?? " ";
+    this.dropShadow = `box-shadow: -1vw 3vh 0 0 rgba(0, 0, 0, .2);`;
   }
 
   renderItem() {
     return (
       <Fragment>
         <img className={this.className+'-icon'} src={resolveAsset("paper.png")} />
-        {this.debug && (<div className={this.className+'-textBox'}> {sanitizeHTML(this.text)+this.stamps} </div>)}
-        {!this.debug && (<div className={this.className+'-textBox'}
+        <div className={this.className+'-textBox'}
         // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: sanitizeHTML(this.text) }} />)}
-        {!this.debug && (<div className={this.className+'-stamps'}
+        dangerouslySetInnerHTML={{ __html: sanitizeHTML(this.props.text) }} />
+        <div className={this.className+'-stamps'}
         // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: this.stamps }} />)}
+        dangerouslySetInnerHTML={{ __html: this.props.stamps }} />
+      </Fragment>
+    );
+  }
+}
+
+class IDCard extends Item {
+  constructor(props) {
+    super(props);
+    this.className = 'InspectorBooth__Items__idcard';
+    this.dropShadow = `box-shadow: -1vw 2vh 0 0 rgba(0, 0, 0, .2);`;
+    this.sfx_startDrag = 'card_drag_start';
+    this.sfx_stopDrag = 'card_drag_stop';
+    this.r = -20;
+  }
+
+  renderItem() {
+    return (
+      <Fragment>
+        <img className={this.className+'-picture'} src={resolveAsset(this.props.picture)} />
+        <div className={this.className+'-name'}> {this.props.name} </div>
       </Fragment>
     );
   }
@@ -333,10 +357,12 @@ const Speaker = (props, context) => {
 };
 
 const Reflection = (props) => {
-  const axis = 46;
-  const y = Math.min(props.y, axis-props.y);
+  const axis = 0.35*window.outerHeight;
+  const x = props.x - 0.7*window.outerWidth;
+  const y = 2*axis - props.b;
+  const r = props.r ?? 0;
   const style = `z-index: ${props.z-1000} !important;
-    transform: translate(${props.x}vw, ${y}vh) scale(1, -1) !important;`;
+    transform: translate(${x}px, ${y}px) scale(1, -1) rotate(${r}deg) !important;`;
   return(
     <div className={props.className+'--reflect'} style={style}>
       {props.children}
@@ -393,7 +419,11 @@ export const InspectorBooth = (props, context) => {
       <div className={className} style={`background-image: url(${resolveAsset("desk_bg.png")});`}>
         {items.papers?.map(item => (
           <Paperwork removable reflectable dragVisible item_id={item.id} text={item.text} stamps={item.stamps}
-          x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps} />
+            x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z+item.text+item.stamps} />
+        ))}
+        {items.idcards?.map(item => (
+          <IDCard removable reflectable dragVisible item_id={item.id} name={item.name} age={item.age} job={item.job}
+            department={item.department} color={item.color} x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z} />
         ))}
         <Receptacle type={'shrink'} renderAboveItems>
           <Receptacle type={'drop_item'} collision={'inside'} >

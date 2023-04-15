@@ -35,9 +35,10 @@ $stamp-height: 8vh !default;
     top: 0;
     right: 0;
     width: 30%;
-    height: 33%;
+    height: 35%;
     min-height: 10px;
     overflow: hidden;
+    pointer-events: none;
 
     & img {
         width: 100%;
@@ -168,6 +169,39 @@ $stamp-height: 8vh !default;
 }
 
 .InspectorBooth__Items {
+
+  &__idcard {
+    height: 21vh;
+    width: 28vw;
+    border-radius: 3vmin;
+    background-color: purple;
+    overflow: hidden;
+
+    &-picture {
+
+    }
+
+    &-name {
+
+    }
+
+    &--reflect {
+      @extend .InspectorBooth__Items__idcard--small;
+      @include --reflect;
+    }
+
+    &--small {
+      @extend .InspectorBooth__Items__idcard;
+      height: 7.5vh;
+      width: 10vw;
+      border-radius: 1vmin;
+
+      .InspectorBooth__Items__idcard-name {
+        font-size: 1vmin;
+        line-height: 1vmin;
+      }
+    }
+  }
 
   &__paper {
     width: 30vw;

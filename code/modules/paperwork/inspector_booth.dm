@@ -59,17 +59,25 @@
 		valid = TRUE
 	if(valid)
 		// TODO: Add auto extinguishing/decontam for part upgrades
+		var/safe = TRUE
 		if (I.resistance_flags & ON_FIRE)
-			to_chat(user, span_warning("\The [src] rejects the burning [I]."))
+			safe = FALSE
+			to_chat(user, span_warning("\The [src] rejects the burning [I]!"))
 		else
+			var/datum/component/radioactive/radiation = I.GetComponent(/datum/component/radioactive)
+			if (radiation && radiation.strength > 50)
+				safe = FALSE
+				to_chat(user, span_warning("\The [src] rejects the irradiated [I]!"))
+				
+		if (safe)
 			if(user.transferItemToLoc(I, src))
 				user.visible_message("[user] inserts \the [I] into \the [src].", \
 				span_notice("You insert \the [I] into \the [src]."))
 				item_list["item"+ num2text(++item_ids)] = list("item" = I, "x" = 0, "y" = 0, "z" = -1)
 			else
-				to_chat(user, span_warning("\The [I] is stuck to your hand, you cannot put it in \the [src]!"))
-	else 
-		to_chat(user, span_warning("\The [src] rejects \the [I]."))
+				to_chat(user, span_warning("You failed to insert \the [I] into \the [src]!"))
+		else 
+			to_chat(user, span_warning("\The [src] rejects \the [I]."))
 
 /obj/machinery/inspector_booth/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
@@ -87,9 +95,11 @@
 
 /obj/machinery/inspector_booth/ui_data(mob/living/carbon/human/user)
 	var/list/data = list()
+	var/list/items = list()
 
 	// Process items
-	var/list/items = list()
+	var/list/names = list()
+	var/name_index = 0
 	for (var/key in item_list)
 		var/I = item_list[key]["item"]
 		
@@ -100,12 +110,31 @@
 				if(istype(P.written[i] ,/datum/langtext))
 					var/datum/langtext/L = P.written[i]
 					text += "\n" + L.text
-			items["papers"] += list(list("id" = key, "text" = text, "stamps" = P.stamps, "x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
+			items["papers"] += list(list("id" = key, "text" = text, "stamps" = P.stamps, 
+				"x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
 		
 		if (istype(I, /obj/item/card/id))
 			var/obj/item/card/id/D = I
-			items["idcards"] += list(list("id" = key, "name" = D.registered_name, "age" = D.registered_age, "job" = D.assignment, "original_job" = D.originalassignment))
+			names[D.registered_name] = ++name_index
+			items["idcards"] += list(list("id" = key, "name" = D.registered_name, "age" = D.registered_age, 
+				"job" = D.assignment, "department" = D.overlays[1], "color" = D.overlays[2], 
+				"x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
 	
+	// Retroactively add profile pictures to ids
+	// The reason why we want to store all the names we want to search
+	// first is so that we only have to loop through the data core once
+	for (var/record in GLOB.data_core.general)
+		var/datum/data/record/R = record
+		var/name = R.fields["name"]
+		if (name in names && istype(R.fields["photo_front"], /obj/item/photo))
+			var/icon/picture = icon(R.fields["photo_front"].picture.picture_image)
+			picture.Crop(10, 32, 22, 22)
+			var/md5 = md5(fcopy_rsc(picture))
+			if(!SSassets.cache["photo_[md5]_cropped.png"])
+				SSassets.transport.register_asset("photo_[md5]_cropped.png", picture)
+			SSassets.transport.send_assets(user, list("photo_[md5]_cropped.png" = picture))
+			items["idcards"][names[name]] += list("picture" = SSassets.transport.get_asset_url("photo_[md5]_cropped.png"))
+
 	data["items"] = items
 
 	// Process stamp components
