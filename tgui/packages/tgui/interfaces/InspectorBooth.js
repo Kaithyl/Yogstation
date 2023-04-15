@@ -1,9 +1,3 @@
-/**
- * @file
- * @copyright 2023 Kaithyl (https://github.com/kaithyl)
- * @license MIT
- */
-
 import { Fragment, Component } from 'inferno';
 import { resolveAsset } from '../assets';
 import { useBackend, useSharedState, useLocalState } from '../backend';
@@ -423,7 +417,7 @@ export const InspectorBooth = (props, context) => {
         ))}
         {items.idcards?.map(item => (
           <IDCard removable reflectable dragVisible item_id={item.id} name={item.name} age={item.age} job={item.job}
-            department={item.department} color={item.color} x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z} />
+            colors={item.colors} x={item.x} y={item.y} z={item.z} key={item.id+item.x+item.y+item.z} />
         ))}
         <Receptacle type={'shrink'} renderAboveItems>
           <Receptacle type={'drop_item'} collision={'inside'} >
@@ -438,7 +432,7 @@ export const InspectorBooth = (props, context) => {
         </Receptacle>
         <StampTray />
         <span className={className+'__Window__glass'} style={`z-index: ${zIndex+2000};`}>
-          <img src={resolveAsset("window.png")} />
+          <img className={className+'__Window__glass-icon'} src={resolveAsset("window.png")} />
         </span>
         <Speaker />
       </div>

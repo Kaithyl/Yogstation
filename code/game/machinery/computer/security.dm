@@ -61,7 +61,7 @@
 /obj/machinery/computer/secure_data/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, "f", name)
+		ui = new(user, src, "SecurityConsole", name)
 		ui.open()
 
 /obj/machinery/computer/secure_data/ui_data(mob/living/carbon/human/user)

@@ -4,7 +4,6 @@
  * @license MIT
  */
 
-/* eslint-disable react/no-unused-state */
 import { Fragment, Component } from 'inferno';
 import { useBackend } from '../backend';
 import { UI_INTERACTIVE } from '../constants';
@@ -14,6 +13,7 @@ export class Draggable extends Component {
     super(props);
     this.state = {
       center: props.center ?? false,
+      // eslint-disable-next-line react/no-unused-state
       dragging: false,
       dX: props.x ?? 0,
       dY: props.y ?? 0,
@@ -52,6 +52,7 @@ export class Draggable extends Component {
     this.setState({
       pX: e.clientX,
       pY: e.clientY,
+      // eslint-disable-next-line react/no-unused-state
       dragging: true,
     });
     window.addEventListener("mousemove", this.duringDrag, false);
@@ -97,6 +98,7 @@ export class Draggable extends Component {
     this.setState({
       initX: 100*left/window.innerWidth,
       initY: 100*top/window.innerHeight,
+      // eslint-disable-next-line react/no-unused-state
       dragging: false,
     });
     window.removeEventListener("mousemove", this.duringDrag, false);

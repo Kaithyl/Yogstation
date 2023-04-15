@@ -1,8 +1,3 @@
-/**
- * Copyright (c) 2023 Kaithyl (https://github.com/kaithyl)
- * SPDX-License-Identifier: MIT
- */
-
 /obj/machinery/inspector_booth
 	name = "inspector booth"
 	desc = "Used for inspecting paperwork."
@@ -117,7 +112,7 @@
 			var/obj/item/card/id/D = I
 			names[D.registered_name] = ++name_index
 			items["idcards"] += list(list("id" = key, "name" = D.registered_name, "age" = D.registered_age, 
-				"job" = D.assignment, "department" = D.overlays[1], "color" = D.overlays[2], 
+				"job" = D.assignment, "colors" = overlays2text(D.overlays),
 				"x" = item_list[key]["x"], "y" = item_list[key]["y"], "z" = item_list[key]["z"]))
 	
 	// Retroactively add profile pictures to ids
