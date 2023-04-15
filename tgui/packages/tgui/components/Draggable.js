@@ -25,13 +25,13 @@ export class Draggable extends Component {
     this.dragStyle = props.dragStyle ?? {};
 
     // Necessary in ES6
-    this.initializeRef = this.initializeRef.bind(this);
+    this.initRef = this.initRef.bind(this);
     this.startDrag = this.startDrag.bind(this);
     this.duringDrag = this.duringDrag.bind(this);
     this.stopDrag = this.stopDrag.bind(this);
   }
 
-  initializeRef(ref) {
+  initRef(ref) {
     this.self = ref;
     if (this.self) {
       let pos = this.self.getBoundingClientRect();
@@ -125,11 +125,12 @@ export class Draggable extends Component {
     }
     return (
       <Fragment>
+        { this.renderOuter && (this.renderOuter()) }
         <div style={{ ...style, ...dragging? this.dragStyle : {} }}
         // eslint-disable-next-line react/jsx-handler-names
-        onMouseDown={this.startDrag} ref={this.initializeRef} >
+        onMouseDown={this.startDrag} ref={this.initRef} >
           { this.renderChildren && (this.renderChildren()) }
-          { this.props.children }
+          {/* this.props.children */}
         </div>
         {pos && <div style={debug}> x: {pos.left}, y: {pos.top}, z: {z} </div>}
       </Fragment>
